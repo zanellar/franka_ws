@@ -1,0 +1,8 @@
+std_msgs/Header header
+float64[7] u_des
+float64[7] u_cbf
+float64[7] u_measured
+float64[7] u_saturated
+float64[7] u_ext
+float64 h
+uint8 solver_status

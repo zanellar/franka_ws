@@ -1,0 +1,5 @@
+if(EXISTS "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test[1]_tests.cmake")
+  include("/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test[1]_tests.cmake")
+else()
+  add_test(osqp_test_NOT_BUILT osqp_test_NOT_BUILT)
+endif()

@@ -1,0 +1,76 @@
+cartesian_impedance_example_controller:
+    type: franka_example_controllers/CartesianImpedanceExampleController
+    arm_id: $(arg arm_id)
+    joint_names:
+        - $(arg arm_id)_joint1
+        - $(arg arm_id)_joint2
+        - $(arg arm_id)_joint3
+        - $(arg arm_id)_joint4
+        - $(arg arm_id)_joint5
+        - $(arg arm_id)_joint6
+        - $(arg arm_id)_joint7
+
+cartesian_impedance_cbf_controller:
+    type: franka_example_controllers/CartesianImpedanceCBFController
+    arm_id: $(arg arm_id)
+    joint_names:
+        - $(arg arm_id)_joint1
+        - $(arg arm_id)_joint2
+        - $(arg arm_id)_joint3
+        - $(arg arm_id)_joint4
+        - $(arg arm_id)_joint5
+        - $(arg arm_id)_joint6
+        - $(arg arm_id)_joint7
+    alpha: $(arg alpha)
+
+cartesian_impedance_dead_zone_cbf_controller:
+    type: franka_example_controllers/CartesianImpedanceDZCBFController
+    arm_id: $(arg arm_id)
+    joint_names:
+        - $(arg arm_id)_joint1
+        - $(arg arm_id)_joint2
+        - $(arg arm_id)_joint3
+        - $(arg arm_id)_joint4
+        - $(arg arm_id)_joint5
+        - $(arg arm_id)_joint6
+        - $(arg arm_id)_joint7
+    alpha: $(arg alpha)
+
+cartesian_impedance_cbf_interaction_controller:
+    type: franka_example_controllers/CartesianImpedanceCBFInteractionController
+    arm_id: $(arg arm_id)
+    joint_names:
+        - $(arg arm_id)_joint1
+        - $(arg arm_id)_joint2
+        - $(arg arm_id)_joint3
+        - $(arg arm_id)_joint4
+        - $(arg arm_id)_joint5
+        - $(arg arm_id)_joint6
+        - $(arg arm_id)_joint7
+    alpha: $(arg alpha)
+
+cartesian_impedance_dead_zone_cbf_interaction_controller:
+    type: franka_example_controllers/CartesianImpedanceDZCBFInteractionController
+    arm_id: $(arg arm_id)
+    joint_names:
+        - $(arg arm_id)_joint1
+        - $(arg arm_id)_joint2
+        - $(arg arm_id)_joint3
+        - $(arg arm_id)_joint4
+        - $(arg arm_id)_joint5
+        - $(arg arm_id)_joint6
+        - $(arg arm_id)_joint7
+    alpha: $(arg alpha)
+
+cartesian_impedance_cbf_interaction_power_controller:
+    type: franka_example_controllers/CartesianImpedanceCBFInteractionPowerController
+    arm_id: $(arg arm_id)
+    joint_names:
+        - $(arg arm_id)_joint1
+        - $(arg arm_id)_joint2
+        - $(arg arm_id)_joint3
+        - $(arg arm_id)_joint4
+        - $(arg arm_id)_joint5
+        - $(arg arm_id)_joint6
+        - $(arg arm_id)_joint7
+    alpha: $(arg alpha)

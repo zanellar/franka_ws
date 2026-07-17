@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>franka_trajectory</name>
+  <version>0.10.1</version>
+  <description>This package publishes a reference trajectory for the cbf controller.</description>
+  <license>Apache 2.0</license>
+  <maintainer email="d.d.logmans@student.utwente.nl">Daniel Logmans</maintainer>
+
+  <author>Franka Emika GmbH</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>geometry_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>libfranka</depend>
+
+  <exec_depend>xacro</exec_depend>
+</package>

@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+
+<launch>
+  <arg name="publish_rate" default="30" />
+  <arg name="trajectory" default="hold"/>
+
+  <node name="trajectory_publisher" pkg="franka_trajectory" type="$(arg trajectory)" output="screen">
+    <param name="publish_rate" value="$(arg publish_rate)" />
+  </node>
+</launch>

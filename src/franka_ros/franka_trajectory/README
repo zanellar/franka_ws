@@ -1,0 +1,1 @@
+franka_trajectory generates a reference trajectory and is launched by the example controller launch files. It provides multiple different trajectories, which can be found in the src folder.

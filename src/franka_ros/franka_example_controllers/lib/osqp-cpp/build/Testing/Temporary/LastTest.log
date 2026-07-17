@@ -1,0 +1,2085 @@
+Start testing: Mar 28 12:48 CET
+----------------------------------------------------------
+1/41 Testing: OsqpTest.DimensionMismatchObjectiveMatrix
+1/41 Test: OsqpTest.DimensionMismatchObjectiveMatrix
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.DimensionMismatchObjectiveMatrix" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.DimensionMismatchObjectiveMatrix" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.DimensionMismatchObjectiveMatrix
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.DimensionMismatchObjectiveMatrix
+[       OK ] OsqpTest.DimensionMismatchObjectiveMatrix (4 ms)
+[----------] 1 test from OsqpTest (4 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (4 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.DimensionMismatchObjectiveMatrix" end time: Mar 28 12:48 CET
+"OsqpTest.DimensionMismatchObjectiveMatrix" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/41 Testing: OsqpTest.DimensionMismatchObjectiveVector
+2/41 Test: OsqpTest.DimensionMismatchObjectiveVector
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.DimensionMismatchObjectiveVector" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.DimensionMismatchObjectiveVector" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.DimensionMismatchObjectiveVector
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.DimensionMismatchObjectiveVector
+[       OK ] OsqpTest.DimensionMismatchObjectiveVector (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.DimensionMismatchObjectiveVector" end time: Mar 28 12:48 CET
+"OsqpTest.DimensionMismatchObjectiveVector" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/41 Testing: OsqpTest.DimensionMismatchLowerBounds
+3/41 Test: OsqpTest.DimensionMismatchLowerBounds
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.DimensionMismatchLowerBounds" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.DimensionMismatchLowerBounds" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.DimensionMismatchLowerBounds
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.DimensionMismatchLowerBounds
+[       OK ] OsqpTest.DimensionMismatchLowerBounds (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.DimensionMismatchLowerBounds" end time: Mar 28 12:48 CET
+"OsqpTest.DimensionMismatchLowerBounds" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/41 Testing: OsqpTest.DimensionMismatchUpperBounds
+4/41 Test: OsqpTest.DimensionMismatchUpperBounds
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.DimensionMismatchUpperBounds" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.DimensionMismatchUpperBounds" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.DimensionMismatchUpperBounds
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.DimensionMismatchUpperBounds
+[       OK ] OsqpTest.DimensionMismatchUpperBounds (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.DimensionMismatchUpperBounds" end time: Mar 28 12:48 CET
+"OsqpTest.DimensionMismatchUpperBounds" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/41 Testing: OsqpTest.InvalidData
+5/41 Test: OsqpTest.InvalidData
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.InvalidData" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.InvalidData" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.InvalidData
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.InvalidData
+ERROR in validate_data: Lower bound at index 0 is greater than upper bound: 1.0000e+00 > 0.0000e+00
+ERROR in osqp_setup: Problem data validation.
+[       OK ] OsqpTest.InvalidData (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.InvalidData" end time: Mar 28 12:48 CET
+"OsqpTest.InvalidData" time elapsed: 00:00:00
+----------------------------------------------------------
+
+6/41 Testing: OsqpTest.TwoDimLP
+6/41 Test: OsqpTest.TwoDimLP
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.TwoDimLP" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.TwoDimLP" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.TwoDimLP
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.TwoDimLP
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 3
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-05, eps_rel = 0.0e+00,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.0667e+01   5.33e+00   5.67e-01   1.00e-01   7.56e-04s
+ 100  -9.9999e-01   4.56e-06   1.55e-06   1.00e-01   7.68e-04s
+
+status:               solved
+number of iterations: 100
+optimal objective:    -1.0000
+run time:             8.78e-04s
+optimal rho estimate: 1.72e-01
+
+[       OK ] OsqpTest.TwoDimLP (1 ms)
+[----------] 1 test from OsqpTest (1 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.TwoDimLP" end time: Mar 28 12:48 CET
+"OsqpTest.TwoDimLP" time elapsed: 00:00:00
+----------------------------------------------------------
+
+7/41 Testing: OsqpTest.TwoDimLPWithEquality
+7/41 Test: OsqpTest.TwoDimLPWithEquality
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.TwoDimLPWithEquality" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.TwoDimLPWithEquality" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.TwoDimLPWithEquality
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.TwoDimLPWithEquality
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 3
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-05, eps_rel = 0.0e+00,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -8.0040e+00   7.00e+00   5.01e+01   1.00e-01   1.44e-05s
+  75  -5.0000e-01   4.23e-07   1.64e-06   6.94e-01   2.11e-04s
+
+status:               solved
+number of iterations: 75
+optimal objective:    -0.5000
+run time:             2.16e-04s
+optimal rho estimate: 3.52e-01
+
+[       OK ] OsqpTest.TwoDimLPWithEquality (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.TwoDimLPWithEquality" end time: Mar 28 12:48 CET
+"OsqpTest.TwoDimLPWithEquality" time elapsed: 00:00:00
+----------------------------------------------------------
+
+8/41 Testing: OsqpTest.DetectsPrimalInfeasible
+8/41 Test: OsqpTest.DetectsPrimalInfeasible
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.DetectsPrimalInfeasible" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.DetectsPrimalInfeasible" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.DetectsPrimalInfeasible
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.DetectsPrimalInfeasible
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 1, constraints m = 2
+          nnz(P) + nnz(A) = 2
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1   0.0000e+00   3.00e+00   2.00e+02   1.00e-01   1.16e-05s
+  50   1.0000e+30   9.99e-01   2.70e-09   1.00e-01   1.86e-05s
+
+status:               primal infeasible
+number of iterations: 50
+run time:             2.02e-05s
+optimal rho estimate: 5.88e-02
+
+[       OK ] OsqpTest.DetectsPrimalInfeasible (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.DetectsPrimalInfeasible" end time: Mar 28 12:48 CET
+"OsqpTest.DetectsPrimalInfeasible" time elapsed: 00:00:00
+----------------------------------------------------------
+
+9/41 Testing: OsqpTest.NewConstraintMatrixInTwoDimLP
+9/41 Test: OsqpTest.NewConstraintMatrixInTwoDimLP
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.NewConstraintMatrixInTwoDimLP" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.NewConstraintMatrixInTwoDimLP" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.NewConstraintMatrixInTwoDimLP
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.NewConstraintMatrixInTwoDimLP
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 3
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-05, eps_rel = 0.0e+00,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.0667e+01   5.33e+00   5.67e-01   1.00e-01   1.27e-05s
+  50  -1.0000e+00   5.83e-09   1.27e-11   2.06e+00   2.06e-05s
+
+status:               solved
+number of iterations: 50
+optimal objective:    -1.0000
+run time:             2.20e-05s
+optimal rho estimate: 1.48e+01
+
+iter   objective    pri res    dua res    rho        time
+   1  -6.3991e-01   2.80e-01   4.78e-01   2.06e+00   5.09e-06s
+  75  -6.2500e-01   2.55e-06   5.50e-08   2.06e+00   1.39e-05s
+
+status:               solved
+number of iterations: 75
+optimal objective:    -0.6250
+run time:             1.52e-05s
+optimal rho estimate: 1.15e+01
+
+[       OK ] OsqpTest.NewConstraintMatrixInTwoDimLP (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.NewConstraintMatrixInTwoDimLP" end time: Mar 28 12:48 CET
+"OsqpTest.NewConstraintMatrixInTwoDimLP" time elapsed: 00:00:00
+----------------------------------------------------------
+
+10/41 Testing: OsqpTest.ErrorIfNotPsd
+10/41 Test: OsqpTest.ErrorIfNotPsd
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.ErrorIfNotPsd" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.ErrorIfNotPsd" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.ErrorIfNotPsd
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.ErrorIfNotPsd
+ERROR in LDL_factor: Error in KKT matrix LDL factorization when computing the nonzero elements. The problem seems to be non-convex
+ERROR in osqp_setup: KKT matrix factorization.
+The problem seems to be non-convex.
+[       OK ] OsqpTest.ErrorIfNotPsd (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.ErrorIfNotPsd" end time: Mar 28 12:48 CET
+"OsqpTest.ErrorIfNotPsd" time elapsed: 00:00:00
+----------------------------------------------------------
+
+11/41 Testing: OsqpTest.GetAndUpdateRho
+11/41 Test: OsqpTest.GetAndUpdateRho
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAndUpdateRho" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAndUpdateRho" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAndUpdateRho
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAndUpdateRho
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 3.00e-03 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.2961e+00   0.00e+00   1.19e+00   3.00e-03   1.25e-05s
+  25  -2.0000e+00   6.28e-16   4.28e-06   3.00e-03   1.81e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             1.95e-05s
+optimal rho estimate: 1.00e-06
+
+[       OK ] OsqpTest.GetAndUpdateRho (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAndUpdateRho" end time: Mar 28 12:48 CET
+"OsqpTest.GetAndUpdateRho" time elapsed: 00:00:00
+----------------------------------------------------------
+
+12/41 Testing: OsqpTest.GetSigma
+12/41 Test: OsqpTest.GetSigma
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetSigma" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetSigma" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetSigma
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetSigma
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 3.00e-03, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6855e+00   3.14e-16   7.93e-01   1.00e-01   1.38e-05s
+  25  -2.0000e+00   6.28e-16   1.82e-10   1.00e-01   1.96e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             2.11e-05s
+optimal rho estimate: 1.28e-04
+
+[       OK ] OsqpTest.GetSigma (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetSigma" end time: Mar 28 12:48 CET
+"OsqpTest.GetSigma" time elapsed: 00:00:00
+----------------------------------------------------------
+
+13/41 Testing: OsqpTest.GetScaling
+13/41 Test: OsqpTest.GetScaling
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetScaling" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetScaling" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetScaling
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetScaling
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.47e-05s
+  25  -2.0000e+00   3.14e-16   2.51e-10   1.00e-01   2.07e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             2.21e-05s
+optimal rho estimate: 8.34e-05
+
+[       OK ] OsqpTest.GetScaling (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetScaling" end time: Mar 28 12:48 CET
+"OsqpTest.GetScaling" time elapsed: 00:00:00
+----------------------------------------------------------
+
+14/41 Testing: OsqpTest.GetAdaptiveRho
+14/41 Test: OsqpTest.GetAdaptiveRho
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAdaptiveRho" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAdaptiveRho" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAdaptiveRho
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAdaptiveRho
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 ,
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.25e-05s
+  25  -2.0000e+00   3.14e-16   2.51e-10   1.00e-01   1.56e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             1.69e-05s
+optimal rho estimate: 8.34e-05
+
+[       OK ] OsqpTest.GetAdaptiveRho (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAdaptiveRho" end time: Mar 28 12:48 CET
+"OsqpTest.GetAdaptiveRho" time elapsed: 00:00:00
+----------------------------------------------------------
+
+15/41 Testing: OsqpTest.GetAdaptiveRhoInterval
+15/41 Test: OsqpTest.GetAdaptiveRhoInterval
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAdaptiveRhoInterval" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAdaptiveRhoInterval" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAdaptiveRhoInterval
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAdaptiveRhoInterval
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.24e-05s
+  25  -2.0000e+00   0.00e+00   4.62e-08   1.00e-06   1.63e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             1.76e-05s
+optimal rho estimate: 1.00e-06
+
+[       OK ] OsqpTest.GetAdaptiveRhoInterval (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAdaptiveRhoInterval" end time: Mar 28 12:48 CET
+"OsqpTest.GetAdaptiveRhoInterval" time elapsed: 00:00:00
+----------------------------------------------------------
+
+16/41 Testing: OsqpTest.GetAdaptiveRhoTolerance
+16/41 Test: OsqpTest.GetAdaptiveRhoTolerance
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAdaptiveRhoTolerance" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAdaptiveRhoTolerance" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAdaptiveRhoTolerance
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAdaptiveRhoTolerance
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.12e-05s
+  25  -2.0000e+00   3.14e-16   2.51e-10   1.00e-01   1.64e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             1.78e-05s
+optimal rho estimate: 8.34e-05
+
+[       OK ] OsqpTest.GetAdaptiveRhoTolerance (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAdaptiveRhoTolerance" end time: Mar 28 12:48 CET
+"OsqpTest.GetAdaptiveRhoTolerance" time elapsed: 00:00:00
+----------------------------------------------------------
+
+17/41 Testing: OsqpTest.GetAdaptiveRhoFraction
+17/41 Test: OsqpTest.GetAdaptiveRhoFraction
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAdaptiveRhoFraction" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAdaptiveRhoFraction" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAdaptiveRhoFraction
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAdaptiveRhoFraction
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.35e-05s
+  25  -2.0000e+00   3.14e-16   2.51e-10   1.00e-01   1.73e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             1.86e-05s
+optimal rho estimate: 8.34e-05
+
+[       OK ] OsqpTest.GetAdaptiveRhoFraction (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAdaptiveRhoFraction" end time: Mar 28 12:48 CET
+"OsqpTest.GetAdaptiveRhoFraction" time elapsed: 00:00:00
+----------------------------------------------------------
+
+18/41 Testing: OsqpTest.GetAndUpdateEpsAbs
+18/41 Test: OsqpTest.GetAndUpdateEpsAbs
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAndUpdateEpsAbs" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAndUpdateEpsAbs" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAndUpdateEpsAbs
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAndUpdateEpsAbs
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 3.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.32e-05s
+  25  -2.0000e+00   3.14e-16   2.51e-10   1.00e-01   1.90e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             2.02e-05s
+optimal rho estimate: 8.34e-05
+
+[       OK ] OsqpTest.GetAndUpdateEpsAbs (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAndUpdateEpsAbs" end time: Mar 28 12:48 CET
+"OsqpTest.GetAndUpdateEpsAbs" time elapsed: 00:00:00
+----------------------------------------------------------
+
+19/41 Testing: OsqpTest.GetAndUpdateEpsRel
+19/41 Test: OsqpTest.GetAndUpdateEpsRel
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAndUpdateEpsRel" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAndUpdateEpsRel" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAndUpdateEpsRel
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAndUpdateEpsRel
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 3.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.18e-05s
+  25  -2.0000e+00   3.14e-16   2.51e-10   1.00e-01   1.70e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             1.84e-05s
+optimal rho estimate: 8.34e-05
+
+[       OK ] OsqpTest.GetAndUpdateEpsRel (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAndUpdateEpsRel" end time: Mar 28 12:48 CET
+"OsqpTest.GetAndUpdateEpsRel" time elapsed: 00:00:00
+----------------------------------------------------------
+
+20/41 Testing: OsqpTest.GetAndUpdateEpsPrimInf
+20/41 Test: OsqpTest.GetAndUpdateEpsPrimInf
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAndUpdateEpsPrimInf" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAndUpdateEpsPrimInf" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAndUpdateEpsPrimInf
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAndUpdateEpsPrimInf
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 3.0e-03, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.01e-05s
+  25  -2.0000e+00   3.14e-16   2.51e-10   1.00e-01   1.49e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             1.63e-05s
+optimal rho estimate: 8.34e-05
+
+[       OK ] OsqpTest.GetAndUpdateEpsPrimInf (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAndUpdateEpsPrimInf" end time: Mar 28 12:48 CET
+"OsqpTest.GetAndUpdateEpsPrimInf" time elapsed: 00:00:00
+----------------------------------------------------------
+
+21/41 Testing: OsqpTest.GetAndUpdateEpsDualInf
+21/41 Test: OsqpTest.GetAndUpdateEpsDualInf
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAndUpdateEpsDualInf" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAndUpdateEpsDualInf" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAndUpdateEpsDualInf
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAndUpdateEpsDualInf
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 3.0e-03,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.28e-05s
+  25  -2.0000e+00   3.14e-16   2.51e-10   1.00e-01   1.84e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             1.98e-05s
+optimal rho estimate: 8.34e-05
+
+[       OK ] OsqpTest.GetAndUpdateEpsDualInf (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAndUpdateEpsDualInf" end time: Mar 28 12:48 CET
+"OsqpTest.GetAndUpdateEpsDualInf" time elapsed: 00:00:00
+----------------------------------------------------------
+
+22/41 Testing: OsqpTest.GetAndUpdateAlpha
+22/41 Test: OsqpTest.GetAndUpdateAlpha
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAndUpdateAlpha" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAndUpdateAlpha" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAndUpdateAlpha
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAndUpdateAlpha
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 0.00, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.0499e-02   0.00e+00   1.99e+00   1.00e-01   1.17e-05s
+ 200  -1.3874e+00   1.57e-16   1.11e+00   1.00e-06   2.72e-05s
+ 400  -1.8158e+00   1.57e-16   6.07e-01   1.00e-06   3.92e-05s
+ 600  -1.9446e+00   3.14e-16   3.33e-01   1.00e-06   5.07e-05s
+ 800  -1.9834e+00   6.28e-16   1.82e-01   1.00e-06   6.21e-05s
+1000  -1.9950e+00   6.28e-16   1.00e-01   1.00e-06   7.34e-05s
+1200  -1.9985e+00   3.14e-16   5.49e-02   1.00e-06   8.48e-05s
+1400  -1.9995e+00   3.14e-16   3.01e-02   1.00e-06   9.63e-05s
+1600  -1.9999e+00   3.14e-16   1.65e-02   1.00e-06   1.07e-04s
+1800  -2.0000e+00   3.14e-16   9.04e-03   1.00e-06   1.19e-04s
+2000  -2.0000e+00   0.00e+00   4.96e-03   1.00e-06   1.30e-04s
+2175  -2.0000e+00   0.00e+00   2.93e-03   1.00e-06   1.40e-04s
+
+status:               solved
+number of iterations: 2175
+optimal objective:    -2.0000
+run time:             1.41e-04s
+optimal rho estimate: 1.00e-06
+
+[       OK ] OsqpTest.GetAndUpdateAlpha (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAndUpdateAlpha" end time: Mar 28 12:48 CET
+"OsqpTest.GetAndUpdateAlpha" time elapsed: 00:00:00
+----------------------------------------------------------
+
+23/41 Testing: OsqpTest.GetAndUpdateDelta
+23/41 Test: OsqpTest.GetAndUpdateDelta
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAndUpdateDelta" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAndUpdateDelta" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAndUpdateDelta
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAndUpdateDelta
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.31e-05s
+  25  -2.0000e+00   3.14e-16   2.51e-10   1.00e-01   1.92e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             2.07e-05s
+optimal rho estimate: 8.34e-05
+
+[       OK ] OsqpTest.GetAndUpdateDelta (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAndUpdateDelta" end time: Mar 28 12:48 CET
+"OsqpTest.GetAndUpdateDelta" time elapsed: 00:00:00
+----------------------------------------------------------
+
+24/41 Testing: OsqpTest.GetAndUpdatePolish
+24/41 Test: OsqpTest.GetAndUpdatePolish
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAndUpdatePolish" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAndUpdatePolish" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAndUpdatePolish
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAndUpdatePolish
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: on, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.34e-05s
+  25  -2.0000e+00   3.14e-16   2.51e-10   1.00e-01   1.95e-05s
+plsh  -2.0000e+00   0.00e+00   0.00e+00   --------   2.31e-05s
+
+status:               solved
+solution polish:      successful
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             2.31e-05s
+optimal rho estimate: 8.34e-05
+
+[       OK ] OsqpTest.GetAndUpdatePolish (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAndUpdatePolish" end time: Mar 28 12:48 CET
+"OsqpTest.GetAndUpdatePolish" time elapsed: 00:00:00
+----------------------------------------------------------
+
+25/41 Testing: OsqpTest.GetAndUpdatePolishRefineIter
+25/41 Test: OsqpTest.GetAndUpdatePolishRefineIter
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAndUpdatePolishRefineIter" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAndUpdatePolishRefineIter" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAndUpdatePolishRefineIter
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAndUpdatePolishRefineIter
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.26e-05s
+  25  -2.0000e+00   3.14e-16   2.51e-10   1.00e-01   1.88e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             2.03e-05s
+optimal rho estimate: 8.34e-05
+
+[       OK ] OsqpTest.GetAndUpdatePolishRefineIter (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAndUpdatePolishRefineIter" end time: Mar 28 12:48 CET
+"OsqpTest.GetAndUpdatePolishRefineIter" time elapsed: 00:00:00
+----------------------------------------------------------
+
+26/41 Testing: OsqpTest.GetAndUpdateVerbose
+26/41 Test: OsqpTest.GetAndUpdateVerbose
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAndUpdateVerbose" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAndUpdateVerbose" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAndUpdateVerbose
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAndUpdateVerbose
+[       OK ] OsqpTest.GetAndUpdateVerbose (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAndUpdateVerbose" end time: Mar 28 12:48 CET
+"OsqpTest.GetAndUpdateVerbose" time elapsed: 00:00:00
+----------------------------------------------------------
+
+27/41 Testing: OsqpTest.GetAndUpdateScaledTermination
+27/41 Test: OsqpTest.GetAndUpdateScaledTermination
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAndUpdateScaledTermination" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAndUpdateScaledTermination" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAndUpdateScaledTermination
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAndUpdateScaledTermination
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: on
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   4.02e-01   1.00e-01   1.29e-05s
+  25  -2.0000e+00   2.22e-16   1.26e-10   1.00e-01   1.78e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             1.91e-05s
+optimal rho estimate: 8.34e-05
+
+[       OK ] OsqpTest.GetAndUpdateScaledTermination (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAndUpdateScaledTermination" end time: Mar 28 12:48 CET
+"OsqpTest.GetAndUpdateScaledTermination" time elapsed: 00:00:00
+----------------------------------------------------------
+
+28/41 Testing: OsqpTest.GetAndUpdateCheckTermination
+28/41 Test: OsqpTest.GetAndUpdateCheckTermination
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAndUpdateCheckTermination" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAndUpdateCheckTermination" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAndUpdateCheckTermination
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAndUpdateCheckTermination
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 12),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.19e-05s
+  12  -2.0000e+00   3.14e-16   3.54e-05   1.00e-01   1.63e-05s
+
+status:               solved
+number of iterations: 12
+optimal objective:    -2.0000
+run time:             1.76e-05s
+optimal rho estimate: 1.00e-06
+
+[       OK ] OsqpTest.GetAndUpdateCheckTermination (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAndUpdateCheckTermination" end time: Mar 28 12:48 CET
+"OsqpTest.GetAndUpdateCheckTermination" time elapsed: 00:00:00
+----------------------------------------------------------
+
+29/41 Testing: OsqpTest.GetAndUpdateWarmStart
+29/41 Test: OsqpTest.GetAndUpdateWarmStart
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAndUpdateWarmStart" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAndUpdateWarmStart" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAndUpdateWarmStart
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAndUpdateWarmStart
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: off, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.14e-05s
+  25  -2.0000e+00   3.14e-16   2.51e-10   1.00e-01   1.72e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             1.87e-05s
+optimal rho estimate: 8.34e-05
+
+[       OK ] OsqpTest.GetAndUpdateWarmStart (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAndUpdateWarmStart" end time: Mar 28 12:48 CET
+"OsqpTest.GetAndUpdateWarmStart" time elapsed: 00:00:00
+----------------------------------------------------------
+
+30/41 Testing: OsqpTest.GetAndUpdateTimeLimit
+30/41 Test: OsqpTest.GetAndUpdateTimeLimit
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.GetAndUpdateTimeLimit" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.GetAndUpdateTimeLimit" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.GetAndUpdateTimeLimit
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.GetAndUpdateTimeLimit
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-03, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 25),
+          time_limit: 2.00e+01 sec,
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: 2.00e+01 sec
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.23e-05s
+  25  -2.0000e+00   3.14e-16   2.51e-10   1.00e-01   1.78e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             1.92e-05s
+optimal rho estimate: 8.34e-05
+
+[       OK ] OsqpTest.GetAndUpdateTimeLimit (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.GetAndUpdateTimeLimit" end time: Mar 28 12:48 CET
+"OsqpTest.GetAndUpdateTimeLimit" time elapsed: 00:00:00
+----------------------------------------------------------
+
+31/41 Testing: OsqpTest.UpdateMaxIter
+31/41 Test: OsqpTest.UpdateMaxIter
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.UpdateMaxIter" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.UpdateMaxIter" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.UpdateMaxIter
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.UpdateMaxIter
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-06, eps_rel = 1.0e-03,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 1
+          check_termination: on (interval 25),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.24e-05s
+
+status:               maximum iterations reached
+number of iterations: 1
+run time:             1.68e-05s
+optimal rho estimate: 1.00e-06
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.9479e+00   6.28e-16   3.23e-01   1.00e-01   4.86e-07s
+   2  -1.9916e+00   0.00e+00   1.30e-01   1.00e-01   1.70e-06s
+
+status:               maximum iterations reached
+number of iterations: 2
+run time:             2.55e-06s
+optimal rho estimate: 1.00e-06
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.9986e+00   9.42e-16   5.21e-02   1.00e-01   3.60e-07s
+  25  -2.0000e+00   0.00e+00   1.63e-11   1.00e-01   2.56e-06s
+
+status:               solved
+number of iterations: 25
+optimal objective:    -2.0000
+run time:             3.49e-06s
+optimal rho estimate: 1.00e-06
+
+[       OK ] OsqpTest.UpdateMaxIter (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.UpdateMaxIter" end time: Mar 28 12:48 CET
+"OsqpTest.UpdateMaxIter" time elapsed: 00:00:00
+----------------------------------------------------------
+
+32/41 Testing: OsqpTest.UpdateEpsAbs
+32/41 Test: OsqpTest.UpdateEpsAbs
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=OsqpTest.UpdateEpsAbs" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"OsqpTest.UpdateEpsAbs" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = OsqpTest.UpdateEpsAbs
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from OsqpTest
+[ RUN      ] OsqpTest.UpdateEpsAbs
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 2
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e+00, eps_rel = 0.0e+00,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 1),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.6772e+00   0.00e+00   8.04e-01   1.00e-01   1.39e-05s
+
+status:               solved
+number of iterations: 1
+optimal objective:    -1.6772
+run time:             1.62e-05s
+optimal rho estimate: 1.00e-06
+
+iter   objective    pri res    dua res    rho        time
+   1  -1.9479e+00   6.28e-16   3.23e-01   1.00e-01   5.42e-07s
+  19  -2.0000e+00   0.00e+00   8.00e-08   1.00e-06   7.91e-06s
+
+status:               solved
+number of iterations: 19
+optimal objective:    -2.0000
+run time:             8.97e-06s
+optimal rho estimate: 1.00e-06
+
+[       OK ] OsqpTest.UpdateEpsAbs (0 ms)
+[----------] 1 test from OsqpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"OsqpTest.UpdateEpsAbs" end time: Mar 28 12:48 CET
+"OsqpTest.UpdateEpsAbs" time elapsed: 00:00:00
+----------------------------------------------------------
+
+33/41 Testing: TwoDimensionalQpTest.Solves
+33/41 Test: TwoDimensionalQpTest.Solves
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=TwoDimensionalQpTest.Solves" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"TwoDimensionalQpTest.Solves" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = TwoDimensionalQpTest.Solves
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from TwoDimensionalQpTest
+[ RUN      ] TwoDimensionalQpTest.Solves
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 1
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-06, eps_rel = 0.0e+00,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 1),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1   0.0000e+00   1.00e+00   2.00e-01   1.00e-01   1.29e-05s
+  25   9.3750e-01   5.05e-07   9.46e-07   2.83e+00   2.23e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    0.9375
+run time:             2.35e-05s
+optimal rho estimate: 2.83e+00
+
+[       OK ] TwoDimensionalQpTest.Solves (0 ms)
+[----------] 1 test from TwoDimensionalQpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"TwoDimensionalQpTest.Solves" end time: Mar 28 12:48 CET
+"TwoDimensionalQpTest.Solves" time elapsed: 00:00:00
+----------------------------------------------------------
+
+34/41 Testing: TwoDimensionalQpTest.UsesJointWarmStart
+34/41 Test: TwoDimensionalQpTest.UsesJointWarmStart
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=TwoDimensionalQpTest.UsesJointWarmStart" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"TwoDimensionalQpTest.UsesJointWarmStart" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = TwoDimensionalQpTest.UsesJointWarmStart
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from TwoDimensionalQpTest
+[ RUN      ] TwoDimensionalQpTest.UsesJointWarmStart
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 1
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-06, eps_rel = 0.0e+00,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 1),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1   9.3750e-01   4.71e-16   9.42e-16   1.00e-01   1.18e-05s
+
+status:               solved
+number of iterations: 1
+optimal objective:    0.9375
+run time:             1.36e-05s
+optimal rho estimate: 2.17e-04
+
+[       OK ] TwoDimensionalQpTest.UsesJointWarmStart (0 ms)
+[----------] 1 test from TwoDimensionalQpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"TwoDimensionalQpTest.UsesJointWarmStart" end time: Mar 28 12:48 CET
+"TwoDimensionalQpTest.UsesJointWarmStart" time elapsed: 00:00:00
+----------------------------------------------------------
+
+35/41 Testing: TwoDimensionalQpTest.UsesSeparateWarmStart
+35/41 Test: TwoDimensionalQpTest.UsesSeparateWarmStart
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=TwoDimensionalQpTest.UsesSeparateWarmStart" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"TwoDimensionalQpTest.UsesSeparateWarmStart" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = TwoDimensionalQpTest.UsesSeparateWarmStart
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from TwoDimensionalQpTest
+[ RUN      ] TwoDimensionalQpTest.UsesSeparateWarmStart
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 1
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-06, eps_rel = 0.0e+00,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 1),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1   9.3750e-01   4.71e-16   9.42e-16   1.00e-01   1.11e-05s
+
+status:               solved
+number of iterations: 1
+optimal objective:    0.9375
+run time:             1.29e-05s
+optimal rho estimate: 2.17e-04
+
+[       OK ] TwoDimensionalQpTest.UsesSeparateWarmStart (0 ms)
+[----------] 1 test from TwoDimensionalQpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"TwoDimensionalQpTest.UsesSeparateWarmStart" end time: Mar 28 12:48 CET
+"TwoDimensionalQpTest.UsesSeparateWarmStart" time elapsed: 00:00:00
+----------------------------------------------------------
+
+36/41 Testing: TwoDimensionalQpTest.SolvesWithNewObjectiveVector
+36/41 Test: TwoDimensionalQpTest.SolvesWithNewObjectiveVector
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=TwoDimensionalQpTest.SolvesWithNewObjectiveVector" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"TwoDimensionalQpTest.SolvesWithNewObjectiveVector" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = TwoDimensionalQpTest.SolvesWithNewObjectiveVector
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from TwoDimensionalQpTest
+[ RUN      ] TwoDimensionalQpTest.SolvesWithNewObjectiveVector
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 1
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-06, eps_rel = 0.0e+00,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 1),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1  -2.1363e-01   1.77e+00   8.00e-01   1.00e-01   1.22e-05s
+  28   1.9375e+00   4.26e-07   8.18e-07   5.18e-01   2.23e-05s
+
+status:               solved
+number of iterations: 28
+optimal objective:    1.9375
+run time:             2.35e-05s
+optimal rho estimate: 6.33e-01
+
+[       OK ] TwoDimensionalQpTest.SolvesWithNewObjectiveVector (0 ms)
+[----------] 1 test from TwoDimensionalQpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"TwoDimensionalQpTest.SolvesWithNewObjectiveVector" end time: Mar 28 12:48 CET
+"TwoDimensionalQpTest.SolvesWithNewObjectiveVector" time elapsed: 00:00:00
+----------------------------------------------------------
+
+37/41 Testing: TwoDimensionalQpTest.SolvesWithNewBounds
+37/41 Test: TwoDimensionalQpTest.SolvesWithNewBounds
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=TwoDimensionalQpTest.SolvesWithNewBounds" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"TwoDimensionalQpTest.SolvesWithNewBounds" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = TwoDimensionalQpTest.SolvesWithNewBounds
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from TwoDimensionalQpTest
+[ RUN      ] TwoDimensionalQpTest.SolvesWithNewBounds
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 1
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-06, eps_rel = 0.0e+00,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 1),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1   0.0000e+00   2.00e+00   3.99e+02   1.00e-01   1.25e-05s
+  40   3.7500e+00   2.98e-07   8.90e-07   1.00e-01   2.44e-05s
+
+status:               solved
+number of iterations: 40
+optimal objective:    3.7500
+run time:             2.56e-05s
+optimal rho estimate: 7.92e-02
+
+[       OK ] TwoDimensionalQpTest.SolvesWithNewBounds (0 ms)
+[----------] 1 test from TwoDimensionalQpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"TwoDimensionalQpTest.SolvesWithNewBounds" end time: Mar 28 12:48 CET
+"TwoDimensionalQpTest.SolvesWithNewBounds" time elapsed: 00:00:00
+----------------------------------------------------------
+
+38/41 Testing: UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/false
+38/41 Test: UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/false
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/0" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/false" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/0
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest
+[ RUN      ] UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/0
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 1
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-06, eps_rel = 0.0e+00,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 1),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1   0.0000e+00   1.00e+00   2.00e-01   1.00e-01   1.50e-05s
+  25   9.3750e-01   5.05e-07   9.46e-07   2.83e+00   2.40e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    0.9375
+run time:             2.52e-05s
+optimal rho estimate: 2.83e+00
+
+iter   objective    pri res    dua res    rho        time
+   1   9.2673e-01   2.70e-02   8.79e-02   2.83e+00   1.59e-06s
+  24   8.7500e-01   3.38e-07   6.94e-07   2.83e+00   6.23e-06s
+
+status:               solved
+number of iterations: 24
+optimal objective:    0.8750
+run time:             7.05e-06s
+optimal rho estimate: 2.20e+00
+
+[       OK ] UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/0 (0 ms)
+[----------] 1 test from UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/false" end time: Mar 28 12:48 CET
+"UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/false" time elapsed: 00:00:00
+----------------------------------------------------------
+
+39/41 Testing: UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/true
+39/41 Test: UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/true
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/1" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/true" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/1
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest
+[ RUN      ] UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/1
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 1
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-06, eps_rel = 0.0e+00,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 1),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1   0.0000e+00   1.00e+00   2.00e-01   1.00e-01   1.29e-05s
+  25   9.3750e-01   5.05e-07   9.46e-07   2.83e+00   2.22e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    0.9375
+run time:             2.34e-05s
+optimal rho estimate: 2.83e+00
+
+iter   objective    pri res    dua res    rho        time
+   1   9.2673e-01   2.70e-02   8.79e-02   2.83e+00   1.57e-06s
+  24   8.7500e-01   3.38e-07   6.94e-07   2.83e+00   6.19e-06s
+
+status:               solved
+number of iterations: 24
+optimal objective:    0.8750
+run time:             7.01e-06s
+optimal rho estimate: 2.20e+00
+
+[       OK ] UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/1 (0 ms)
+[----------] 1 test from UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/true" end time: Mar 28 12:48 CET
+"UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveMatrix/true" time elapsed: 00:00:00
+----------------------------------------------------------
+
+40/41 Testing: UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/false
+40/41 Test: UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/false
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/0" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/false" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/0
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest
+[ RUN      ] UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/0
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 1
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-06, eps_rel = 0.0e+00,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 1),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1   0.0000e+00   1.00e+00   2.00e-01   1.00e-01   1.17e-05s
+  25   9.3750e-01   5.05e-07   9.46e-07   2.83e+00   2.01e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    0.9375
+run time:             2.13e-05s
+optimal rho estimate: 2.83e+00
+
+iter   objective    pri res    dua res    rho        time
+   1   9.2778e-01   4.86e-01   5.62e+00   2.83e+00   1.55e-06s
+  32   3.5000e+00   2.11e-07   7.45e-07   2.83e+00   7.17e-06s
+
+status:               solved
+number of iterations: 32
+optimal objective:    3.5000
+run time:             8.03e-06s
+optimal rho estimate: 2.82e+00
+
+[       OK ] UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/0 (0 ms)
+[----------] 1 test from UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/false" end time: Mar 28 12:48 CET
+"UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/false" time elapsed: 00:00:00
+----------------------------------------------------------
+
+41/41 Testing: UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/true
+41/41 Test: UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/true
+Command: "/media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/osqp_test" "--gtest_filter=UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/1" "--gtest_also_run_disabled_tests"
+Directory: /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build
+"UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/true" start time: Mar 28 12:48 CET
+Output:
+----------------------------------------------------------
+Running main() from /media/sf_Master_Thesis_DDLogmans/Software/ROS_environment/Franka_WS/src/franka_ros/franka_example_controllers/lib/osqp-cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/1
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest
+[ RUN      ] UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/1
+-----------------------------------------------------------------
+           OSQP v0.6.0  -  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  -  Stanford University 2019
+-----------------------------------------------------------------
+problem:  variables n = 2, constraints m = 1
+          nnz(P) + nnz(A) = 4
+settings: linear system solver = qdldl,
+          eps_abs = 1.0e-06, eps_rel = 0.0e+00,
+          eps_prim_inf = 1.0e-04, eps_dual_inf = 1.0e-04,
+          rho = 1.00e-01 (adaptive),
+          sigma = 1.00e-06, alpha = 1.60, max_iter = 4000
+          check_termination: on (interval 1),
+          scaling: on, scaled_termination: off
+          warm start: on, polish: off, time_limit: off
+
+iter   objective    pri res    dua res    rho        time
+   1   0.0000e+00   1.00e+00   2.00e-01   1.00e-01   1.18e-05s
+  25   9.3750e-01   5.05e-07   9.46e-07   2.83e+00   2.03e-05s
+
+status:               solved
+number of iterations: 25
+optimal objective:    0.9375
+run time:             2.14e-05s
+optimal rho estimate: 2.83e+00
+
+iter   objective    pri res    dua res    rho        time
+   1   9.2778e-01   4.86e-01   5.62e+00   2.83e+00   1.52e-06s
+  32   3.5000e+00   2.11e-07   7.45e-07   2.83e+00   7.17e-06s
+
+status:               solved
+number of iterations: 32
+optimal objective:    3.5000
+run time:             7.99e-06s
+optimal rho estimate: 2.82e+00
+
+[       OK ] UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/1 (0 ms)
+[----------] 1 test from UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/true" end time: Mar 28 12:48 CET
+"UseUpperTriangularObjectiveMatrix/ParameterizedTwoDimensionalQpTest.SolvesWithNewObjectiveAndConstraintMatrices/true" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Mar 28 12:48 CET

@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>osqp-cpp</name>
+  <version>0.0.1</version>
+  <description>last attempt to include libabsl .so files in the install folder</description>
+  <maintainer email="">DLogmans</maintainer>
+  <license>None</license>
+  <depend>libabsl</depend>
+</package>
