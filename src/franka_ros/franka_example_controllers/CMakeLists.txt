@@ -80,6 +80,7 @@ add_library(franka_example_controllers
   src/cartesian_impedance_cbf_interaction_controller.cpp
   src/cartesian_impedance_cbf_interaction_power_controller.cpp
   src/cartesian_impedance_dead_zone_cbf_interaction_controller.cpp
+  src/cartesian_impedance_directional_kinetic_energy_cbf_controller.cpp
 )
 
 

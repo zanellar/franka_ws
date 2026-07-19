@@ -1,0 +1,47 @@
+<?xml version="1.0" ?>
+<launch>
+  <arg name="robot" default="panda" doc="choose your robot. Possible values: [panda, fr3]"/>
+  <arg name="arm_id" default="$(arg robot)" />
+
+  <arg name="publish_rate" default="100" doc="update rate of reference trajectory"/>
+  <arg name="trajectory" default="circular" doc="trajectory type, current implementations {circular,chirp,square_wave,hold,tension}"/>
+  <arg name="rosbag" default="true" doc="record messages with rosbag"/>
+
+  <arg name="alpha" default="1." doc="alpha parameter for the CBF controller"/>
+  <arg name="cbf_active" default="true" doc="turn CBF filtering on or off"/>
+  <arg name="Kmax" default="1.5" doc="maximum directional kinetic energy [J]"/>
+  <arg name="damping_ratio" default="1." doc="damping ratio of Cartesian impedance controller"/>
+
+  <!-- Direction is expressed in the robot base frame and normalized by the controller. -->
+  <arg name="direction_x" default="1." doc="x component of the task-space direction"/>
+  <arg name="direction_y" default="0." doc="y component of the task-space direction"/>
+  <arg name="direction_z" default="0." doc="z component of the task-space direction"/>
+  <arg name="mobility_epsilon" default="1e-8" doc="minimum directional mobility used for regularization"/>
+  <arg name="derivative_filter_alpha" default="0.05" doc="EMA coefficient for numerical Jdot and effective-mass derivative estimates"/>
+
+  <param name="alpha" type="double" value="$(arg alpha)"/>
+  <param name="cbf_active" type="bool" value="$(arg cbf_active)"/>
+  <param name="Kmax" type="double" value="$(arg Kmax)"/>
+  <param name="damping_ratio" type="double" value="$(arg damping_ratio)"/>
+  <param name="direction_x" type="double" value="$(arg direction_x)"/>
+  <param name="direction_y" type="double" value="$(arg direction_y)"/>
+  <param name="direction_z" type="double" value="$(arg direction_z)"/>
+  <param name="mobility_epsilon" type="double" value="$(arg mobility_epsilon)"/>
+  <param name="derivative_filter_alpha" type="double" value="$(arg derivative_filter_alpha)"/>
+
+  <node pkg="rosbag" type="record" name="rosbag_recorder"
+        args="record -a -o /home/dlogmans/Desktop/Master_Thesis_DDLogmans/Software/Rundata/$(arg trajectory)_directional_$(arg direction_x)_$(arg direction_y)_$(arg direction_z)_$(arg alpha)_$(arg Kmax)_$(arg cbf_active)"
+        if="$(arg rosbag)" />
+
+  <include file="$(find franka_control)/launch/franka_control.launch" pass_all_args="true"/>
+  <rosparam command="load" file="$(find franka_example_controllers)/config/franka_example_controllers.yaml" subst_value="true" />
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen"
+        args="cartesian_impedance_directional_kinetic_energy_cbf_controller"/>
+  <node pkg="rviz" type="rviz" output="screen" name="rviz"
+        args="-d $(find franka_example_controllers)/launch/rviz/franka_description_with_marker.rviz -f $(arg arm_id)_link0 --splash-screen $(find franka_visualization)/splash.png"/>
+  <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" required="false" />
+
+  <node name="trajectory_publisher" pkg="franka_trajectory" type="$(arg trajectory)" output="screen">
+    <param name="publish_rate" value="$(arg publish_rate)" />
+  </node>
+</launch>

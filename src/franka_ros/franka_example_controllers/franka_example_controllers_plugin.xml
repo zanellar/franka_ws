@@ -30,4 +30,9 @@
       CBF overlay of cartesian impedance example controller, with rudamentary interaction force compensation and power limiting
     </description>
   </class>
+  <class name="franka_example_controllers/CartesianImpedanceDirectionalKineticEnergyCBFController" type="franka_example_controllers::CartesianImpedanceDirectionalKineticEnergyCBFController" base_class_type="controller_interface::ControllerBase">
+    <description>
+      Cartesian impedance controller with a CBF limiting translational kinetic energy along a configurable task-space direction.
+    </description>
+  </class>
 </library>
