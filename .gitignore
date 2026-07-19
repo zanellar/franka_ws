@@ -1,0 +1,9 @@
+
+/build/
+/devel/
+/install/
+*.bag
+*.bag.active
+.ros/
+log/
+logs/
