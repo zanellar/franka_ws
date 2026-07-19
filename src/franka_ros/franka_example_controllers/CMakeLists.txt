@@ -174,3 +174,8 @@ if(PEP_TOOLS)
   add_pyformat_target(franka_control FILES ${PYSOURCES})
 endif()
 
+catkin_install_python(
+  PROGRAMS
+    scripts/interactive_marker.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)

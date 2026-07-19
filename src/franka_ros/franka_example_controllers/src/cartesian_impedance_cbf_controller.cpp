@@ -249,23 +249,27 @@ void CartesianImpedanceCBFController::update(const ros::Time& time,
   // filter joint velocity (limit change in joint velocity based on specs)
   dq_saturated = saturateQdotRate(dq, dq_saturated);
 
-  // compute true h-value based on measured joint velocity
+  // Compute the diagnostic barrier value from measured joint velocity.
   std::tie(tau_cbf, h) = cbfAnalytical(tau_d, mass, gravity, dq);
   cbf_info.h = h;
 
-  // compute control value based on filtered joint velocity
-  // std::tie(tau_cbf, h) = cbfAnalytical(tau_d, mass, gravity, Eigen::Map<Eigen::Matrix<double, 7, 1>>(dq_saturated.data()));
-  std::tie(tau_cbf, h) = cbfCompute(tau_d, mass, gravity, Eigen::Map<Eigen::Matrix<double, 7, 1>>(dq_saturated.data()));
-  Eigen::Map<Eigen::VectorXd>(&cbf_info.u_cbf[0], 7, 1) = tau_cbf;
-  
-
-  if (cbf_active){
+  if (cbf_active) {
     ROS_DEBUG_ONCE("cbf active");
-  }
-  else{
+
+    // Compute and apply the CBF-filtered torque.
+    std::tie(tau_cbf, h) = cbfCompute(
+        tau_d,
+        mass,
+        gravity,
+        Eigen::Map<Eigen::Matrix<double, 7, 1>>(dq_saturated.data()));
+  } else {
     ROS_DEBUG_ONCE("cbf not active");
+
+    // Bypass the QP completely.
     tau_cbf = tau_d;
   }
+
+  Eigen::Map<Eigen::VectorXd>(&cbf_info.u_cbf[0], 7, 1) = tau_cbf;
 
   // Saturate torque rate to avoid discontinuities -> handled by franka, this implementation does not work at all. Therefore left out.
   // tau_sat << saturateTorqueRate(tau_cbf, tau_J_d);
@@ -453,3 +457,4 @@ Eigen::Matrix<double, 7, 1> CartesianImpedanceCBFController::EMA(
 
 PLUGINLIB_EXPORT_CLASS(franka_example_controllers::CartesianImpedanceCBFController,
                        controller_interface::ControllerBase)
+                   
