@@ -6,3 +6,5 @@ float64[7] u_saturated
 float64[7] u_ext
 float64 h
 uint8 solver_status
+float64 kinetic_energy
+float64 Kmax

@@ -119,6 +119,7 @@ class CartesianImpedanceCBFController : public controller_interface::MultiInterf
   double alpha;
   double damping_ratio;
   bool cbf_active;
+  double kinetic_energy_{0.0};
   
   const double kInfinity = std::numeric_limits<double>::infinity();
 

@@ -220,6 +220,8 @@ void CartesianImpedanceCBFController::update(const ros::Time& time,
   Eigen::Matrix<double, 6, 1> error;
   error.head(3) << position - position_d_;
 
+  kinetic_energy_ = 0.5 * dq.transpose() * mass * dq;
+
   // orientation error
   if (orientation_d_.coeffs().dot(orientation.coeffs()) < 0.0) {
     orientation.coeffs() << -orientation.coeffs();
@@ -262,6 +264,8 @@ void CartesianImpedanceCBFController::update(const ros::Time& time,
   // Compute the diagnostic barrier value from measured joint velocity.
   std::tie(tau_cbf, h) = cbfAnalytical(tau_d, mass, gravity, dq);
   cbf_info.h = h;
+  cbf_info.kinetic_energy = kinetic_energy_;
+  cbf_info.Kmax = Kmax; 
 
   if (cbf_active) {
     ROS_DEBUG_ONCE("cbf active");
@@ -343,7 +347,7 @@ std::tuple<Eigen::Matrix<double, 7, 1>, double> CartesianImpedanceCBFController:
   // implements the CBF function " Kmax - .5 * qdot.T @ D @ qdot >= 0 " 
 
   // compute cbf value
-  h(0,0) = Kmax -.5 * dq.transpose() * D * dq;
+  h(0,0) = Kmax - kinetic_energy_;
 
   /* Load problem data */
 
