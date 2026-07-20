@@ -441,6 +441,15 @@ void CartesianImpedanceCBFController::complianceParamCallback(
   cartesian_damping_target_.bottomRightCorner(3, 3)
       << damping_ratio * 2.0 * sqrt(config.rotational_stiffness) * Eigen::Matrix3d::Identity();
   nullspace_stiffness_target_ = config.nullspace_stiffness;
+  cbf_active = config.cbf_active;
+  Kmax = config.Kmax;
+  alpha = config.alpha;
+
+  ROS_INFO_STREAM(
+      "CBF parameters updated: active="
+      << std::boolalpha << cbf_active
+      << ", Kmax=" << Kmax
+      << ", alpha=" << alpha);
 }
 
 void CartesianImpedanceCBFController::equilibriumPoseCallback(

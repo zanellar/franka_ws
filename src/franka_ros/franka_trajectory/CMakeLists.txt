@@ -5,8 +5,20 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(catkin REQUIRED COMPONENTS
+  dynamic_reconfigure
   geometry_msgs
+  message_generation
   roscpp
+)
+
+add_service_files(
+  FILES
+  SetLinearCommand.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  geometry_msgs
 )
 
 find_package(Franka 0.9.0 QUIET)
@@ -17,9 +29,15 @@ endif()
 # merge Franka + catkin INCLUDE_DIRS in topological order
 list_insert_in_workspace_order(catkin_INCLUDE_DIRS ${Franka_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS})
 
-catkin_package(CATKIN_DEPENDS geometry_msgs roscpp)
+catkin_package(
+  CATKIN_DEPENDS
+    dynamic_reconfigure
+    geometry_msgs
+    message_runtime
+    roscpp
+)
 
-set(EXECUTABLES circular chirp square_wave hold tension)
+set(EXECUTABLES circular chirp square_wave hold tension linear)
 
 foreach(executable ${EXECUTABLES})
   add_executable(${executable}

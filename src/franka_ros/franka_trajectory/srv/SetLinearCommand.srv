@@ -1,0 +1,8 @@
+float64 x_move
+bool cbf_active
+float64 Kmax
+float64 alpha
+---
+bool success
+geometry_msgs/Pose applied_pose
+string message

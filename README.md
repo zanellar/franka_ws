@@ -28,6 +28,7 @@ The procedure below has been validated for the `franka_ws_013` branch with:
 - [Runtime environment](#runtime-environment)
 - [Build verification](#build-verification)
 - [Gazebo test](#gazebo-test)
+- [Linear trajectory command service](#linear-trajectory-command-service)
 - [Hardware preparation](#hardware-preparation)
 - [Run controllers](#run-controllers)
 - [Manual equilibrium pose](#manual-equilibrium-pose)
@@ -503,6 +504,196 @@ rostopic hz /franka_state_controller/joint_states
 ```
 
 ---
+
+
+# Linear trajectory command service
+
+The workspace includes a `linear` trajectory publisher for repeatable Gazebo and hardware experiments.
+
+Unlike `hold`, which continuously publishes one fixed equilibrium pose, `linear` stores the current target pose and allows it to be updated while the controller is running. The update is sent through:
+
+```text
+/trajectory_publisher/set_experiment_command
+```
+
+The service request contains:
+
+```text
+float64 x_move
+bool cbf_active
+float64 Kmax
+float64 alpha
+```
+
+The service performs one coordinated experiment command:
+
+1. update `cbf_active`, `Kmax`, and `alpha` through the controller's dynamic-reconfigure server;
+2. add `x_move` to the currently stored Cartesian x target;
+3. keep publishing the resulting equilibrium pose until the next service request.
+
+The displacement is relative and cumulative:
+
+```text
+new_target_x = current_target_x + x_move
+```
+
+For example, starting from `x = 0.307`:
+
+```text
+x_move =  0.20  -> x = 0.507
+x_move = -0.20  -> x = 0.307
+```
+
+The service response reports whether the update succeeded and returns the applied pose.
+
+## Gazebo test with the linear trajectory
+
+Start Gazebo with the `linear` trajectory enabled:
+
+```bash
+source ~/Riccardo/franka_ws_013/env.sh
+
+roslaunch franka_example_controllers \
+  cartesian_impedance_cbf_controller_gazebo.launch \
+  trajectory:=linear \
+  start_trajectory:=true \
+  cbf_active:=false \
+  Kmax:=20.0 \
+  alpha:=1.0 \
+  headless:=false \
+  rviz:=false
+```
+
+Leave the launch terminal running.
+
+In a second terminal:
+
+```bash
+source ~/Riccardo/franka_ws_013/env.sh
+```
+
+Verify that the trajectory service and the controller dynamic-reconfigure service are available:
+
+```bash
+rosservice list | grep -E \
+  'set_experiment_command|dynamic_reconfigure_compliance_param_node/set_parameters'
+```
+
+Expected services include:
+
+```text
+/trajectory_publisher/set_experiment_command
+/cartesian_impedance_cbf_controller/dynamic_reconfigure_compliance_param_node/set_parameters
+```
+
+Run the following three test commands in sequence.
+
+### Test 1: move forward with the CBF disabled
+
+```bash
+rosservice call \
+  /trajectory_publisher/set_experiment_command \
+  "x_move: 0.20
+cbf_active: false
+Kmax: 20.0
+alpha: 1.0"
+```
+
+Expected applied x target:
+
+```text
+x = 0.507
+```
+
+### Test 2: move back to the initial target with the CBF disabled
+
+```bash
+rosservice call \
+  /trajectory_publisher/set_experiment_command \
+  "x_move: -0.20
+cbf_active: false
+Kmax: 20.0
+alpha: 1.0"
+```
+
+Expected applied x target:
+
+```text
+x = 0.307
+```
+
+### Test 3: move forward with the CBF enabled
+
+```bash
+rosservice call \
+  /trajectory_publisher/set_experiment_command \
+  "x_move: 0.20
+cbf_active: true
+Kmax: 0.01
+alpha: 1.0"
+```
+
+Expected applied x target:
+
+```text
+x = 0.507
+```
+
+The expected service response is:
+
+```text
+success: True
+message: "Pose and CBF parameters updated."
+```
+
+Verify the pose being republished:
+
+```bash
+rostopic echo -n 1 /trajectory_publisher/equilibrium_pose
+```
+
+Verify the active CBF parameters:
+
+```bash
+rosrun dynamic_reconfigure dynparam get \
+  /cartesian_impedance_cbf_controller/dynamic_reconfigure_compliance_param_node
+```
+
+The final test should report values equivalent to:
+
+```yaml
+cbf_active: true
+Kmax: 0.01
+alpha: 1.0
+```
+
+## Command semantics and precautions
+
+`x_move` is an increment, not an absolute x coordinate. Repeating the same command repeatedly continues to move the target:
+
+```text
+0.307 -> 0.507 -> 0.707
+```
+
+Use small increments during initial hardware testing, for example:
+
+```bash
+rosservice call \
+  /trajectory_publisher/set_experiment_command \
+  "x_move: 0.01
+cbf_active: false
+Kmax: 20.0
+alpha: 1.0"
+```
+
+The combined service requires the Cartesian CBF controller to be running. If the controller dynamic-reconfigure service is unavailable, the request fails with:
+
+```text
+Failed to update the controller dynamic-reconfigure service.
+```
+
+For physical-robot tests, define and enforce suitable Cartesian workspace limits inside `linear.cpp` before using large cumulative offsets.
+
 
 # Hardware preparation
 
