@@ -1,0 +1,63 @@
+##########################################################
+##########################################################
+##########################################################
+
+Gazebo Tests (Total Energy) 
+
+------------------------------------------
+
+Terminal 1: 
+
+$ source ~/Riccardo/franka_ws_013/env.sh
+
+$ roslaunch franka_example_controllers \
+cartesian_impedance_cbf_controller_gazebo.launch \
+trajectory:=linear \
+start_trajectory:=true \
+cbf_active:=false \
+Kmax:=20.0 \
+alpha:=1.0 \
+headless:=false \
+rviz:=false
+
+------------------------------------------
+
+Terminal 2:  
+
+$ source ~/Riccardo/franka_ws_013/env.sh
+
+$ rqt_plot /cbf_info/kinetic_energy /cbf_info/Kmax
+
+
+------------------------------------------
+
+Terminal 3:  
+
+$ source ~/Riccardo/franka_ws_013/env.sh
+
+$ rosservice call \
+  /trajectory_publisher/set_experiment_command \
+  "x_move: 0.20
+cbf_active: false
+Kmax: 20.0
+alpha: 1.0"
+
+$ rosservice call \
+  /trajectory_publisher/set_experiment_command \
+  "x_move: -0.20
+cbf_active: false
+Kmax: 20.0
+alpha: 1.0"
+
+$ rosservice call \
+  /trajectory_publisher/set_experiment_command \
+  "x_move: 0.20
+cbf_active: true
+Kmax: 0.01
+alpha: 1.0"
+
+##########################################################
+##########################################################
+##########################################################
+
+Gazebo Tests (Directional Energy) 
