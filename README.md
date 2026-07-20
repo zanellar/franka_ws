@@ -1,491 +1,428 @@
-# Franka ROS 1 Workspace with Control Barrier Function Controllers
+# Franka ROS 1 Workspace with Cartesian Impedance and CBF Controllers
 
-This repository is a complete ROS 1 Catkin workspace for controlling Franka research robots with `ros_control`. It is based on `franka_ros` 0.10.1 and extends the original Cartesian impedance example controller with several Control Barrier Function (CBF) safety filters, trajectory generators, diagnostic messages, OSQP integration, and rosbag-based experiment logging.
+This repository is a complete ROS 1 Catkin workspace based on `franka_ros` 0.10.1. It adds Cartesian-impedance controllers with total and directional kinetic-energy Control Barrier Functions (CBFs), OSQP-based torque filtering, trajectory publishers, diagnostics, RViz support, and experiment launch files.
 
-The workspace supports both the Panda and FR3 model names used by this version of `franka_ros`:
+The installation documented here was exercised with:
 
-- `robot:=panda`
-- `robot:=fr3`
-
-The newest controller in this repository is:
-
-```text
-cartesian_impedance_directional_kinetic_energy_cbf_controller
-```
-
-It limits translational kinetic energy along a configurable direction expressed in the robot base frame while retaining the nominal Cartesian impedance and null-space behavior.
+- Ubuntu 20.04.6 LTS;
+- ROS Noetic;
+- a PREEMPT_RT kernel;
+- libfranka 0.13.3 built from source in an isolated prefix;
+- a Franka Research 3 (FR3), Robot System 5.6.0;
+- robot IP `172.16.0.2`;
+- no Franka Hand, therefore `load_gripper:=false`.
 
 > **Safety notice**
 >
-> This is experimental research software that commands joint torques on a physical robot. Validate every controller in a safe environment, start with conservative gains and energy limits, keep the emergency stop accessible, and follow the Franka operating and safety documentation. A CBF implementation, numerical solver, or model estimate does not by itself make an experiment safe.
-
----
+> These controllers command joint torques on physical hardware. Clear the robot workspace, keep the user-stop accessible, enable FCI only when ready, and begin with `trajectory:=hold` and `cbf_active:=false`. Repeated solver failures, communication errors, oscillation, or unexpected motion require stopping the experiment. A CBF or QP solver does not by itself make an experiment safe.
 
 ## Contents
 
-- [Repository overview](#repository-overview)
-- [Workspace structure](#workspace-structure)
-- [Available controllers](#available-controllers)
-- [Directional kinetic-energy CBF](#directional-kinetic-energy-cbf)
-- [Trajectory generators](#trajectory-generators)
-- [Software requirements](#software-requirements)
+- [Controllers](#controllers)
+- [Installation step by step](#installation-step-by-step)
+- [Runtime environment](#runtime-environment)
 - [Robot and network preparation](#robot-and-network-preparation)
-- [Installation](#installation)
-- [Required local configuration](#required-local-configuration)
-- [Running a controller](#running-a-controller)
-- [Directional controller examples](#directional-controller-examples)
-- [Controller parameters](#controller-parameters)
+- [Run controllers](#run-controllers)
+- [Command a Cartesian target manually](#command-a-cartesian-target-manually)
 - [Topics and diagnostics](#topics-and-diagnostics)
-- [Dynamic reconfigure](#dynamic-reconfigure)
-- [Recording experiments](#recording-experiments)
-- [Development workflow](#development-workflow)
 - [Troubleshooting](#troubleshooting)
-- [Known limitations](#known-limitations)
+- [Development workflow](#development-workflow)
 
----
+## Controllers
 
-## Repository overview
-
-The repository contains a ROS 1 workspace rather than only a single ROS package. The original `franka_ros` packages are located under `src/franka_ros`, together with the added CBF-related packages and files.
-
-Main additions relative to the upstream ROS 1 Franka integration include:
-
-- Cartesian impedance controllers with CBF safety filters;
-- an OSQP C++ dependency vendored inside `franka_example_controllers`;
-- a custom `franka_msgs/Cbf` diagnostic message;
-- a `franka_trajectory` package with several reference generators;
-- launch files that start the robot interface, controller, trajectory publisher, RViz, dynamic reconfigure, and optional rosbag recording;
-- a directional task-space kinetic-energy CBF controller.
-
-The original Cartesian impedance controller is still available as a separate plugin. The CBF controllers are additional controller classes rather than replacements for the upstream controller.
-
----
-
-## Workspace structure
-
-```text
-franka_ws/
-├── README.md
-├── README.txt
-└── src/
-    ├── CMakeLists.txt
-    └── franka_ros/
-        ├── franka_control/
-        ├── franka_description/
-        ├── franka_example_controllers/
-        │   ├── cfg/
-        │   ├── config/
-        │   │   └── franka_example_controllers.yaml
-        │   ├── include/franka_example_controllers/
-        │   ├── launch/
-        │   ├── lib/
-        │   │   └── osqp-cpp/
-        │   ├── msg/
-        │   ├── scripts/
-        │   ├── src/
-        │   ├── CMakeLists.txt
-        │   ├── franka_example_controllers_plugin.xml
-        │   └── package.xml
-        ├── franka_hw/
-        ├── franka_msgs/
-        │   └── msg/Cbf.msg
-        ├── franka_ros/
-        ├── franka_trajectory/
-        │   ├── launch/
-        │   └── src/
-        └── franka_visualization/
-```
-
-### Important files
-
-| File | Purpose |
+| Controller | Purpose |
 |---|---|
-| `src/franka_ros/franka_example_controllers/CMakeLists.txt` | Builds the controller library and links OSQP. |
-| `src/franka_ros/franka_example_controllers/franka_example_controllers_plugin.xml` | Registers controller classes with `pluginlib`. |
-| `src/franka_ros/franka_example_controllers/config/franka_example_controllers.yaml` | Defines controller names, plugin types, arm ID, and joint names. |
-| `src/franka_ros/franka_example_controllers/launch/*.launch` | Starts each controller and its supporting nodes. |
-| `src/franka_ros/franka_msgs/msg/Cbf.msg` | Diagnostic message used by the CBF controllers. |
-| `src/franka_ros/franka_trajectory/src/*.cpp` | Cartesian reference trajectory publishers. |
+| `cartesian_impedance_example_controller` | Standard Cartesian impedance controller driven by the RViz interactive marker. |
+| `cartesian_impedance_cbf_controller` | Cartesian impedance with a total joint-space kinetic-energy CBF. |
+| `cartesian_impedance_dead_zone_cbf_controller` | Total-energy CBF with a Cartesian dead zone. |
+| `cartesian_impedance_cbf_interaction_controller` | Total-energy CBF with external-interaction handling. |
+| `cartesian_impedance_dead_zone_cbf_interaction_controller` | Dead-zone and external-interaction variant. |
+| `cartesian_impedance_cbf_interaction_power_controller` | Energy and interaction-power limiting. |
+| `cartesian_impedance_directional_kinetic_energy_cbf_controller` | Limits translational kinetic energy along a selected base-frame direction. |
+
+The directional controller constrains:
+
+```text
+K_dir = 0.5 * lambda_dir * v_dir^2
+h     = Kmax - K_dir
+```
+
+where `v_dir` is the end-effector velocity projected along the selected direction and `lambda_dir` is the corresponding effective mass. The safe set is `h >= 0`.
 
 ---
 
-## Available controllers
+## Installation step by step
 
-The controller names used by `controller_manager` are listed below.
+### 0. Version rule
 
-| Controller name | Plugin class | Description |
-|---|---|---|
-| `cartesian_impedance_example_controller` | `CartesianImpedanceExampleController` | Original Cartesian spring-damper controller with null-space regulation. |
-| `cartesian_impedance_cbf_controller` | `CartesianImpedanceCBFController` | Cartesian impedance controller with a total joint-space kinetic-energy CBF. |
-| `cartesian_impedance_dead_zone_cbf_controller` | `CartesianImpedanceDZCBFController` | Total kinetic-energy CBF plus a Cartesian position dead zone. |
-| `cartesian_impedance_cbf_interaction_controller` | `CartesianImpedanceCBFInteractionController` | Total kinetic-energy CBF including an estimated external-interaction term. |
-| `cartesian_impedance_dead_zone_cbf_interaction_controller` | `CartesianImpedanceDZCBFInteractionController` | Dead-zone controller combined with external-interaction handling. |
-| `cartesian_impedance_cbf_interaction_power_controller` | `CartesianImpedanceCBFInteractionPowerController` | Kinetic-energy and external-power limiting. |
-| `cartesian_impedance_directional_kinetic_energy_cbf_controller` | `CartesianImpedanceDirectionalKineticEnergyCBFController` | Limits translational kinetic energy along a configurable task-space direction. |
+Use Ubuntu 20.04 with ROS Noetic for this branch. The workspace CMake files are pinned to **libfranka 0.13.3**.
 
-Each CBF controller has a launch file with the same base name under:
+`pylibfranka` is **not required** by this ROS 1 workspace. This branch uses the C++ library and ROS control interfaces from libfranka 0.13.3. Do not install a newer Python binding as a substitute for the required C++ library.
+
+The commands below use this layout:
 
 ```text
-src/franka_ros/franka_example_controllers/launch/
+~/Riccardo/
+├── franka_ws_013/
+└── libfranka-0.13.3/
+    └── install/
 ```
 
----
+### 1. Install ROS Noetic and base tools
 
-## Directional kinetic-energy CBF
-
-The directional controller projects the translational end-effector Jacobian along a unit direction \(\hat d\):
-
-```text
-J_dir = d_hat^T J_translation
-```
-
-It then computes:
-
-```text
-v_dir      = J_dir q_dot
-lambda_dir = 1 / (J_dir M^-1 J_dir^T)
-K_dir      = 0.5 lambda_dir v_dir^2
-h          = Kmax - K_dir
-```
-
-The safe set is:
-
-```text
-h >= 0  <=>  K_dir <= Kmax
-```
-
-A quadratic program minimally modifies the nominal torque command while enforcing the CBF condition and joint torque/rate limits. The nominal command remains the Cartesian impedance plus null-space controller.
-
-### Direction convention
-
-The parameters
-
-```text
-direction_x
-direction_y
-direction_z
-```
-
-define a vector in the robot base frame. The controller normalizes the vector internally. For example:
-
-```text
-[1, 0, 0]   positive base-frame x
-[0, 1, 0]   positive base-frame y
-[0, 0, 1]   positive base-frame z
-[-1, 0, 0]  negative base-frame x
-```
-
-A zero or near-zero vector is invalid.
-
-### Numerical derivatives
-
-The controller estimates the directional Jacobian derivative and effective-mass derivative numerically. These estimates are filtered using an exponential moving average controlled by:
-
-```text
-derivative_filter_alpha
-```
-
-A smaller value produces stronger smoothing and more delay. A larger value follows changes more quickly but is more sensitive to noise.
-
----
-
-## Trajectory generators
-
-The `franka_trajectory` package publishes Cartesian equilibrium poses on:
-
-```text
-/trajectory_publisher/equilibrium_pose
-```
-
-Available executables are:
-
-| Trajectory | Description |
-|---|---|
-| `hold` | Publishes a fixed Cartesian pose. |
-| `circular` | Circular motion in the Cartesian `y-z` plane. |
-| `chirp` | Oscillatory motion with changing frequency. |
-| `square_wave` | Discontinuous square-wave reference along one Cartesian axis. |
-| `tension` | Vertical displacement sequence intended for tension/contact experiments. |
-
-Select a trajectory with:
-
-```text
-trajectory:=hold
-```
-
-The reference publication rate is controlled by:
-
-```text
-publish_rate:=100
-```
-
-> `square_wave`, aggressive chirps, and large circular trajectories can generate abrupt or large commands. Inspect the source constants and test with conservative controller gains before using them on hardware.
-
----
-
-## Software requirements
-
-This code is based on the ROS 1 `franka_ros` 0.10.1 generation. Use a system compatible with that software stack.
-
-Required components include:
-
-- Linux;
-- ROS 1 with Catkin;
-- a compatible `libfranka` installation;
-- Eigen 3;
-- a C++14 compiler for the Franka packages;
-- CMake 3.16 or newer for the vendored OSQP integration;
-- ROS packages used by `franka_ros`, including `ros_control`, `controller_manager`, `dynamic_reconfigure`, `pluginlib`, `realtime_tools`, `geometry_msgs`, `sensor_msgs`, `tf`, and `tf_conversions`;
-- RViz and `rqt_reconfigure` if the corresponding launch nodes are enabled;
-- `rosbag` for experiment recording.
-
-A typical ROS dependency installation step is:
+Skip the ROS repository setup when ROS Noetic is already installed.
 
 ```bash
-cd ~/franka_ws
-rosdep update
-rosdep install --from-paths src --ignore-src --rosdistro "$ROS_DISTRO" -y
+sudo apt update
+sudo apt install -y curl ca-certificates gnupg2 lsb-release
+
+sudo mkdir -p /usr/share/keyrings
+sudo curl -sSL \
+  https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+  -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" \
+  | sudo tee /etc/apt/sources.list.d/ros1-latest.list > /dev/null
+
+sudo apt update
+sudo apt install -y \
+  ros-noetic-desktop-full \
+  python3-rosdep \
+  python3-catkin-tools \
+  python3-vcstool \
+  build-essential \
+  cmake \
+  git \
+  pkg-config \
+  libeigen3-dev \
+  libpoco-dev \
+  libfmt-dev \
+  ethtool \
+  rt-tests
 ```
 
-This command may not install all non-ROS dependencies used by the vendored OSQP build. Review any unresolved dependencies printed by `rosdep`.
+Initialize `rosdep` once:
 
-### libfranka compatibility
+```bash
+if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
+  sudo rosdep init
+fi
+rosdep update
+```
 
-The included packages search for Franka versions compatible with the original 0.10.x workspace. Do not mix arbitrary current versions of `libfranka`, robot firmware, and this ROS 1 snapshot. Confirm the compatibility matrix for the exact robot and firmware used in the laboratory.
+Source ROS:
+
+```bash
+source /opt/ros/noetic/setup.bash
+```
+
+### 2. Clone this repository at branch `franka_ws_013`
+
+```bash
+mkdir -p ~/Riccardo
+
+git clone \
+  --branch franka_ws_013 \
+  --single-branch \
+  https://github.com/zanellar/franka_ws.git \
+  ~/Riccardo/franka_ws_013
+
+cd ~/Riccardo/franka_ws_013
+git branch --show-current
+```
+
+Expected:
+
+```text
+franka_ws_013
+```
+
+### 3. Clone and build libfranka 0.13.3
+
+```bash
+mkdir -p ~/Riccardo
+
+git clone \
+  --recursive \
+  --branch 0.13.3 \
+  --single-branch \
+  https://github.com/frankarobotics/libfranka.git \
+  ~/Riccardo/libfranka-0.13.3
+
+cd ~/Riccardo/libfranka-0.13.3
+git submodule update --init --recursive
+```
+
+Configure, build, and install into an isolated local prefix:
+
+```bash
+cd ~/Riccardo/libfranka-0.13.3
+rm -rf build install
+
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install" \
+  -DBUILD_TESTS=OFF \
+  -DBUILD_EXAMPLES=ON
+
+cmake --build build -j"$(nproc)"
+cmake --install build
+```
+
+Verify the library:
+
+```bash
+ls -l "$HOME/Riccardo/libfranka-0.13.3/install/lib/libfranka.so"*
+```
+
+The installed ABI should be `libfranka.so.0.13`.
+
+### 4. Install ROS dependencies for the workspace
+
+Use `--skip-keys libfranka` because this setup deliberately uses the custom 0.13.3 installation instead of the ROS Noetic binary package.
+
+```bash
+cd ~/Riccardo/franka_ws_013
+source /opt/ros/noetic/setup.bash
+
+rosdep install \
+  --from-paths src \
+  --ignore-src \
+  --rosdistro noetic \
+  --skip-keys libfranka \
+  -y
+```
+
+### 5. Build and install the Catkin workspace
+
+```bash
+cd ~/Riccardo/franka_ws_013
+source /opt/ros/noetic/setup.bash
+
+export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
+
+rm -rf build devel install
+
+catkin_make install \
+  -DCMAKE_PREFIX_PATH="$FRANKA_013_PREFIX;/opt/ros/noetic" \
+  -DCMAKE_BUILD_TYPE=Release
+```
+
+### 6. Copy the Abseil shared libraries
+
+The vendored `osqp-cpp` build creates Abseil shared libraries in `devel/lib`, but Catkin does not reliably copy all of them into `install/lib`. Apply this workaround after every clean build:
+
+```bash
+cd ~/Riccardo/franka_ws_013
+cp -a devel/lib/libabsl*.so* install/lib/
+```
+
+### 7. Verify the installed workspace
+
+```bash
+cd ~/Riccardo/franka_ws_013
+source /opt/ros/noetic/setup.bash
+source install/setup.bash
+
+export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
+export LD_LIBRARY_PATH="$PWD/install/lib:$FRANKA_013_PREFIX/lib:/opt/ros/noetic/lib:${LD_LIBRARY_PATH:-}"
+
+rospack find franka_control
+rospack find franka_example_controllers
+
+ldd install/lib/franka_control/franka_control_node | grep "not found"
+ldd install/lib/libfranka_example_controllers.so | grep "not found"
+
+ldd install/lib/franka_control/franka_control_node | grep libfranka
+ldd install/lib/libfranka_example_controllers.so | grep libfranka
+```
+
+Expected results:
+
+- both `grep "not found"` commands print nothing;
+- both Franka dependencies resolve to `~/Riccardo/libfranka-0.13.3/install/lib/libfranka.so.0.13`.
+
+---
+
+## Runtime environment
+
+Run this block in every fresh terminal used for the workspace:
+
+```bash
+cd ~/Riccardo/franka_ws_013
+
+source /opt/ros/noetic/setup.bash
+source install/setup.bash
+
+export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
+export LD_LIBRARY_PATH="$PWD/install/lib:$FRANKA_013_PREFIX/lib:/opt/ros/noetic/lib:${LD_LIBRARY_PATH:-}"
+```
+
+Do not source an older Franka workspace in the same terminal.
+
+Create an optional helper script:
+
+```bash
+cat > ~/Riccardo/franka_ws_013/env.sh <<'EOF'
+#!/usr/bin/env bash
+cd "$HOME/Riccardo/franka_ws_013" || return 1
+source /opt/ros/noetic/setup.bash
+source install/setup.bash
+export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
+export LD_LIBRARY_PATH="$PWD/install/lib:$FRANKA_013_PREFIX/lib:/opt/ros/noetic/lib:${LD_LIBRARY_PATH:-}"
+EOF
+
+chmod +x ~/Riccardo/franka_ws_013/env.sh
+```
+
+Then use:
+
+```bash
+source ~/Riccardo/franka_ws_013/env.sh
+```
 
 ---
 
 ## Robot and network preparation
 
-Before starting a hardware controller:
+Before every hardware launch:
 
-1. Connect the control computer to the robot control network.
-2. Configure the computer network interface so it can reach the robot IP address.
-3. Confirm connectivity, for example:
+1. Connect the control computer to the robot network.
+2. Configure the Ethernet interface in the same subnet as the robot.
+3. Verify connectivity:
 
    ```bash
-   ping 172.16.0.2
+   ping -c 4 172.16.0.2
    ```
 
-4. Unlock the robot brakes and enable the external control interface using the Franka web interface.
-5. Confirm that no other process is already controlling the robot.
-6. Put the robot in a collision-free initial configuration.
-7. Keep the emergency stop and operator interface accessible.
+4. Open Franka Desk.
+5. Unlock the joints.
+6. Enable FCI.
+7. Confirm that no other FCI client is connected.
+8. Clear the physical workspace and keep the user-stop accessible.
 
-The example launch commands in this README use:
+For the tested FR3 without a Hand, always use:
 
 ```text
-robot_ip:=172.16.0.2
+robot:=fr3
+load_gripper:=false
 ```
 
-Change this value to the robot address in your laboratory.
+### Real-time and communication checks
+
+Confirm the real-time kernel:
+
+```bash
+uname -a
+```
+
+Run a latency test:
+
+```bash
+sudo cyclictest \
+  --mlockall \
+  --smp \
+  --priority=80 \
+  --interval=1000 \
+  --duration=60s
+```
+
+The libfranka communication test moves the robot. Run it only with the workspace clear and the user-stop accessible:
+
+```bash
+cd ~/Riccardo/libfranka-0.13.3/build/examples
+sudo chrt -f 80 ./communication_test 172.16.0.2
+```
+
+Low ping latency does not prove that the 1 kHz FCI connection is reliable. The tested `sinatra` host previously showed non-zero state loss, so this repository must be treated as a development setup until the communication success rate is consistently near 1.00.
 
 ---
 
-## Installation
+## Run controllers
 
-### 1. Extract or clone the workspace
+Enable FCI in Franka Desk before each launch. Stop the launch with `Ctrl+C` before starting another controller.
 
-```bash
-cd ~
-unzip franka_ws-directional-kinetic-energy-cbf.zip
-cd franka_ws
-```
+### Standard Cartesian impedance controller
 
-The workspace root is the directory containing `src/`.
-
-### 2. Source ROS
+This launch starts the RViz interactive marker. The robot moves when the `equilibrium_pose` marker is moved.
 
 ```bash
-source /opt/ros/$ROS_DISTRO/setup.bash
-```
+source ~/Riccardo/franka_ws_013/env.sh
 
-### 3. Install dependencies
-
-```bash
-rosdep update
-rosdep install --from-paths src --ignore-src --rosdistro "$ROS_DISTRO" -y
-```
-
-### 4. Build and install
-
-The original workflow uses the Catkin install space:
-
-```bash
-catkin_make install
-```
-
-For a clean rebuild:
-
-```bash
-rm -rf build devel install
-catkin_make install
-```
-
-### 5. Source the workspace
-
-```bash
-source install/setup.bash
-```
-
-The old README used `install/setup.sh`; `setup.bash` is generally more convenient in Bash. Either is valid when generated by Catkin.
-
-To source the workspace automatically in new terminals:
-
-```bash
-echo 'source ~/franka_ws/install/setup.bash' >> ~/.bashrc
-```
-
-Adjust the path if the workspace is located elsewhere.
-
----
-
-## Required local configuration
-
-### Rosbag output paths
-
-The CBF launch files contain an absolute rosbag output path inherited from the original experimental workspace:
-
-```text
-/home/dlogmans/Desktop/Master_Thesis_DDLogmans/Software/Rundata/
-```
-
-This path must be changed before using rosbag recording on another computer.
-
-Search for it with:
-
-```bash
-grep -R "/home/dlogmans" -n \
-  src/franka_ros/franka_example_controllers/launch
-```
-
-Edit each launch file you intend to use and replace the prefix with an existing writable directory, for example:
-
-```text
-/home/<user>/franka_bags/
-```
-
-Create the directory:
-
-```bash
-mkdir -p ~/franka_bags
-```
-
-Alternatively, disable recording at launch time:
-
-```text
-rosbag:=false
-```
-
-### Abseil shared-library workaround
-
-The vendored `osqp-cpp` build depends on Abseil. In the original workspace, some `libabsl*.so` files may appear in the Catkin development space but not in the install space. If the controller fails at runtime with an error such as:
-
-```text
-error while loading shared libraries: libabsl_*.so: cannot open shared object file
-```
-
-copy the generated libraries into the install space:
-
-```bash
-find devel/lib -maxdepth 1 -name 'libabsl*.so*' -exec cp -av {} install/lib/ \;
-```
-
-Then refresh the shell environment:
-
-```bash
-source install/setup.bash
-```
-
-You can verify the controller library dependencies with:
-
-```bash
-ldd install/lib/libfranka_example_controllers.so | grep 'not found'
-```
-
-If the command prints nothing, all linked shared libraries were resolved.
-
-### Build-directory artifacts
-
-The repository contains a vendored OSQP source tree and may also contain generated build artifacts from the original development machine. When diagnosing build problems, remove top-level Catkin build products first:
-
-```bash
-rm -rf build devel install
-catkin_make install
-```
-
-Avoid manually editing files under generated `build/` directories.
-
----
-
-## Running a controller
-
-General pattern:
-
-```bash
-roslaunch franka_example_controllers \
-  <controller_launch_file>.launch \
-  robot_ip:=172.16.0.2 \
-  load_gripper:=false \
-  robot:=panda \
-  trajectory:=hold \
-  Kmax:=1.5 \
-  cbf_active:=true \
-  alpha:=1.0 \
-  rosbag:=false
-```
-
-Use `robot:=fr3` for an FR3 model. The launch files derive `arm_id` from `robot` by default.
-
-### Run the original Cartesian impedance controller
-
-```bash
 roslaunch franka_example_controllers \
   cartesian_impedance_example_controller.launch \
   robot_ip:=172.16.0.2 \
   load_gripper:=false \
-  robot:=panda
+  robot:=fr3 \
+  alpha:=1.0 \
+  Kmax:=20.0 \
+  rosbag:=false
 ```
 
-### Run the total kinetic-energy CBF controller
+Begin with a displacement of only a few millimetres.
+
+### Total kinetic-energy CBF controller, CBF disabled
+
+Use this as the baseline test. In this branch, OSQP is bypassed when `cbf_active:=false`.
 
 ```bash
+source ~/Riccardo/franka_ws_013/env.sh
+
 roslaunch franka_example_controllers \
   cartesian_impedance_cbf_controller.launch \
   robot_ip:=172.16.0.2 \
   load_gripper:=false \
-  robot:=panda \
+  robot:=fr3 \
   trajectory:=hold \
-  Kmax:=1.5 \
+  Kmax:=20.0 \
+  cbf_active:=false \
   alpha:=1.0 \
-  cbf_active:=true \
   rosbag:=false
 ```
 
-### Compare CBF enabled and disabled
-
-The launch interface permits the same controller to be run with filtering disabled:
-
-```text
-cbf_active:=false
-```
-
-This is useful for controlled comparisons, but disabling the CBF removes the corresponding safety constraint.
-
----
-
-## Directional controller examples
-
-### Panda, positive x direction
+Verify from another sourced terminal:
 
 ```bash
+source ~/Riccardo/franka_ws_013/env.sh
+rosparam get /cbf_active
+rosservice call /controller_manager/list_controllers
+```
+
+### Total kinetic-energy CBF controller, CBF active
+
+Start with a moderate energy limit:
+
+```bash
+source ~/Riccardo/franka_ws_013/env.sh
+
+roslaunch franka_example_controllers \
+  cartesian_impedance_cbf_controller.launch \
+  robot_ip:=172.16.0.2 \
+  load_gripper:=false \
+  robot:=fr3 \
+  trajectory:=hold \
+  Kmax:=1.0 \
+  cbf_active:=true \
+  alpha:=1.0 \
+  rosbag:=false
+```
+
+Smaller values such as `Kmax:=0.1` or `Kmax:=0.01` produce a more restrictive energy limit. Repeated `OsqpExitCode::kTimeLimitReached` messages mean that the QP did not finish within the configured real-time limit for those cycles; do not treat such a run as a clean validation.
+
+### Directional kinetic-energy CBF controller
+
+This example constrains motion along positive base-frame x:
+
+```bash
+source ~/Riccardo/franka_ws_013/env.sh
+
 roslaunch franka_example_controllers \
   cartesian_impedance_directional_kinetic_energy_cbf_controller.launch \
   robot_ip:=172.16.0.2 \
   load_gripper:=false \
-  robot:=panda \
+  robot:=fr3 \
   trajectory:=hold \
-  Kmax:=0.5 \
+  Kmax:=0.1 \
   alpha:=1.0 \
   direction_x:=1.0 \
   direction_y:=0.0 \
@@ -494,439 +431,283 @@ roslaunch franka_example_controllers \
   rosbag:=false
 ```
 
-### FR3, negative y direction
+Direction examples:
 
-```bash
-roslaunch franka_example_controllers \
-  cartesian_impedance_directional_kinetic_energy_cbf_controller.launch \
-  robot_ip:=172.16.0.2 \
-  load_gripper:=false \
-  robot:=fr3 \
-  trajectory:=hold \
-  Kmax:=0.5 \
-  alpha:=1.0 \
-  direction_x:=0.0 \
-  direction_y:=-1.0 \
-  direction_z:=0.0 \
-  cbf_active:=true \
-  rosbag:=false
+```text
+[ 1, 0, 0]  positive base-frame x
+[-1, 0, 0]  negative base-frame x
+[ 0, 1, 0]  positive base-frame y
+[ 0, 0, 1]  positive base-frame z
 ```
 
-### Diagonal direction
+The controller normalizes the vector internally. A zero vector is invalid.
+
+### Available trajectory publishers
 
 ```bash
-roslaunch franka_example_controllers \
-  cartesian_impedance_directional_kinetic_energy_cbf_controller.launch \
-  robot_ip:=172.16.0.2 \
-  load_gripper:=false \
-  robot:=fr3 \
-  trajectory:=circular \
-  Kmax:=0.75 \
-  alpha:=2.0 \
-  direction_x:=1.0 \
-  direction_y:=1.0 \
-  direction_z:=0.0 \
-  derivative_filter_alpha:=0.05 \
-  mobility_epsilon:=1e-8 \
-  cbf_active:=true \
-  rosbag:=true
+find ~/Riccardo/franka_ws_013/install/lib/franka_trajectory \
+  -maxdepth 1 \
+  -type f \
+  -executable \
+  -printf '%f\n'
 ```
 
-The vector `[1, 1, 0]` is normalized by the controller.
+Expected names include:
+
+```text
+hold
+circular
+chirp
+square_wave
+tension
+```
+
+Use `trajectory:=circular`, not `trajectory:=circle`.
 
 ---
 
-## Controller parameters
+## Command a Cartesian target manually
 
-### Common parameters
-
-| Parameter | Type | Typical default | Meaning |
-|---|---:|---:|---|
-| `robot_ip` | string | none | Robot control address. Required by hardware launch. |
-| `robot` | string | `panda` | Robot model: `panda` or `fr3`. |
-| `arm_id` | string | value of `robot` | Prefix used for model, state, and joint handles. |
-| `load_gripper` | bool | inherited | Whether to start the gripper integration. |
-| `trajectory` | string | `circular` | Executable from `franka_trajectory`. |
-| `publish_rate` | double | `100` | Reference trajectory publication rate in hertz. |
-| `rosbag` | bool | `true` | Enables or disables `rosbag record -a`. |
-| `alpha` | double | `1.0` | CBF class-K gain/aggressiveness parameter. |
-| `cbf_active` | bool | `true` | Applies the CBF-filtered torque when true. |
-| `Kmax` | double | `1.5` | Energy limit in joules. Meaning depends on controller. |
-| `damping_ratio` | double | `1.0` | Scale used for Cartesian damping gains. |
-
-### Directional controller parameters
-
-| Parameter | Type | Default | Meaning |
-|---|---:|---:|---|
-| `direction_x` | double | `1.0` | Base-frame x component of the constrained direction. |
-| `direction_y` | double | `0.0` | Base-frame y component of the constrained direction. |
-| `direction_z` | double | `0.0` | Base-frame z component of the constrained direction. |
-| `mobility_epsilon` | double | `1e-8` | Lower numerical regularization threshold for directional mobility. |
-| `derivative_filter_alpha` | double | `0.05` | EMA coefficient for numerical derivative estimates; must be in `(0, 1]`. |
-
-### Other controller-specific parameters
-
-| Controller family | Additional parameters |
-|---|---|
-| Dead-zone controllers | `deadzone` |
-| Dead-zone test input | `power` |
-| Interaction-power controller | `Pmax` |
-
-Inspect the selected launch file for the authoritative list:
-
-```bash
-grep '<arg name=' \
-  src/franka_ros/franka_example_controllers/launch/<file>.launch
-```
-
----
-
-## Topics and diagnostics
-
-### Reference input
-
-The CBF Cartesian impedance controllers subscribe to:
+The CBF controllers subscribe to:
 
 ```text
 /trajectory_publisher/equilibrium_pose
 ```
 
-Message type:
-
-```text
-geometry_msgs/PoseStamped
-```
-
-### CBF diagnostics
-
-The controllers publish:
-
-```text
-/cbf_info
-```
-
-or the equivalent name resolved from the controller node namespace.
-
-Message type:
-
-```text
-franka_msgs/Cbf
-```
-
-The message contains:
-
-```text
-std_msgs/Header header
-float64[7] u_des
-float64[7] u_cbf
-float64[7] u_measured
-float64[7] u_saturated
-float64[7] u_ext
-float64 h
-uint8 solver_status
-```
-
-For the directional controller:
-
-- `u_des` is the nominal torque command;
-- `u_cbf` is the torque after directional CBF filtering;
-- `u_measured` is the measured joint torque;
-- `u_saturated` is the final rate-limited command;
-- `h = Kmax - K_dir`;
-- `solver_status` reports the controller's QP outcome.
-
-Inspect live data with:
+The `hold` node publishes continuously and overwrites manual commands. After the controller reaches the hold pose, stop only the trajectory publisher:
 
 ```bash
+rosnode kill /trajectory_publisher
+```
+
+Check that the controller remains subscribed:
+
+```bash
+rostopic info /trajectory_publisher/equilibrium_pose
+```
+
+Publish an absolute target pose:
+
+```bash
+rostopic pub -1 \
+  /trajectory_publisher/equilibrium_pose \
+  geometry_msgs/PoseStamped \
+  "{header: {stamp: now, frame_id: ''}, pose: {position: {x: 0.507, y: 0.0, z: 0.59}, orientation: {x: 0.9238795, y: -0.3826834, z: 0.0, w: 0.0}}}"
+```
+
+This is an absolute pose in the controller reference frame, not a relative `+0.20 m` command.
+
+---
+
+## Topics and diagnostics
+
+```bash
+rostopic list | grep -Ei 'cbf|equilibrium|joint|state'
 rostopic echo /cbf_info
-```
-
-List active topics with:
-
-```bash
-rostopic list
-```
-
-Plot selected fields with:
-
-```bash
 rqt_plot /cbf_info/h
+rosservice call /controller_manager/list_controllers
 ```
 
----
+The custom `franka_msgs/Cbf` message contains nominal, CBF-filtered, measured, and final torques, together with the barrier value `h` and solver status.
 
-## Dynamic reconfigure
+For a valid CBF experiment:
 
-The controller launch files start `rqt_reconfigure`. The Cartesian compliance callback controls:
-
-- translational stiffness;
-- rotational stiffness;
-- null-space stiffness.
-
-Damping is derived from stiffness and the `damping_ratio` launch parameter.
-
-The directional CBF parameters are currently read during controller initialization. Restart the controller after changing:
-
-- `Kmax`;
-- `alpha`;
-- direction components;
-- `mobility_epsilon`;
-- `derivative_filter_alpha`.
-
----
-
-## Recording experiments
-
-The CBF launch files can start:
-
-```bash
-rosbag record -a
-```
-
-This records all active ROS topics. Enable recording with:
-
-```text
-rosbag:=true
-```
-
-Disable it with:
-
-```text
-rosbag:=false
-```
-
-Before enabling it, replace the hard-coded output path as described in [Required local configuration](#required-local-configuration).
-
-Inspect a bag:
-
-```bash
-rosbag info <bagfile>.bag
-```
-
-Replay a bag without commanding a robot:
-
-```bash
-rosbag play <bagfile>.bag
-```
-
-Suggested signals for validation include:
-
-- `/cbf_info/h`;
-- nominal and filtered torque vectors;
-- robot joint velocity and torque state;
-- end-effector pose;
-- the published equilibrium pose.
-
-For a valid directional-energy experiment, verify that `h` remains non-negative within an acceptable numerical tolerance and that solver failures are absent.
-
----
-
-## Development workflow
-
-### Add a controller source file
-
-New controller implementations must be added to:
-
-```text
-src/franka_ros/franka_example_controllers/src/
-```
-
-with the corresponding header under:
-
-```text
-src/franka_ros/franka_example_controllers/include/franka_example_controllers/
-```
-
-Then update all of the following:
-
-1. `franka_example_controllers/CMakeLists.txt`;
-2. `franka_example_controllers_plugin.xml`;
-3. `config/franka_example_controllers.yaml`;
-4. add a launch file under `launch/`.
-
-### Rebuild after changing messages or controllers
-
-```bash
-cd ~/franka_ws
-source /opt/ros/$ROS_DISTRO/setup.bash
-rm -rf build devel install
-catkin_make install
-source install/setup.bash
-```
-
-### Confirm plugin registration
-
-```bash
-rospack plugins --attrib=plugin controller_interface \
-  | grep franka_example_controllers
-```
-
-### Confirm the built library exists
-
-```bash
-ls -l install/lib/libfranka_example_controllers.so
-```
+- the intended controller must be `running`;
+- solver failures must be absent or explicitly handled;
+- `h` should remain non-negative within an understood numerical tolerance;
+- torque, rate, communication, and collision limits must not be violated.
 
 ---
 
 ## Troubleshooting
 
-### `roslaunch` cannot find a package
+### Missing Abseil libraries
 
-Ensure both ROS and the workspace are sourced:
+Typical error:
 
-```bash
-source /opt/ros/$ROS_DISTRO/setup.bash
-source ~/franka_ws/install/setup.bash
+```text
+libabsl_*.so: cannot open shared object file
 ```
 
-Check:
+Fix:
 
 ```bash
+cd ~/Riccardo/franka_ws_013
+cp -a devel/lib/libabsl*.so* install/lib/
+source ~/Riccardo/franka_ws_013/env.sh
+
+ldd install/lib/libfranka_example_controllers.so | grep "not found"
+```
+
+The final command should print nothing.
+
+### Wrong libfranka version or incompatible protocol
+
+Typical symptom:
+
+```text
+libfranka: Incompatible library version
+```
+
+Check the linked library:
+
+```bash
+source ~/Riccardo/franka_ws_013/env.sh
+
+ldd install/lib/franka_control/franka_control_node | grep libfranka
+ldd install/lib/libfranka_example_controllers.so | grep libfranka
+```
+
+Both must resolve to the local `libfranka.so.0.13`. If an older library under `/opt/ros/noetic` appears, open a fresh terminal, source only this workspace, preserve the runtime path exactly as shown above, and rebuild with the explicit `CMAKE_PREFIX_PATH`.
+
+### `roslaunch` cannot find a package
+
+```bash
+source /opt/ros/noetic/setup.bash
+source ~/Riccardo/franka_ws_013/install/setup.bash
 rospack find franka_example_controllers
 ```
 
-### Controller type is not found
+### `Connection to FCI refused`
 
-Check that:
+Enable FCI in Franka Desk and make sure another process is not connected to the robot.
 
-- the class exists in `franka_example_controllers_plugin.xml`;
-- the YAML `type` exactly matches the plugin XML name;
-- the source is included in `CMakeLists.txt`;
-- the controller library was rebuilt and the new install space was sourced.
+### FR3 model or joint errors
 
-### Controller cannot obtain model, state, or joint handles
-
-Check that `robot` and `arm_id` match the loaded robot model:
+Use:
 
 ```text
-robot:=panda  arm_id:=panda
+robot:=fr3
 ```
 
-or:
+The expected effort resources are `fr3_joint1` through `fr3_joint7`.
+
+### Gripper library links to an older libfranka
+
+This setup has no Franka Hand. Use:
 
 ```text
-robot:=fr3  arm_id:=fr3
+load_gripper:=false
 ```
 
-The YAML joint names are generated from `arm_id`.
+Do not diagnose the unused `/opt/ros/noetic/lib/libfranka_gripper.so` as the controller failure unless the gripper node is actually being loaded.
 
-### Robot connection fails
+### `interactive_marker.py` is missing
+
+```bash
+cd ~/Riccardo/franka_ws_013
+chmod +x src/franka_ros/franka_example_controllers/scripts/interactive_marker.py
+source /opt/ros/noetic/setup.bash
+export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
+
+catkin_make install \
+  -DCMAKE_PREFIX_PATH="$FRANKA_013_PREFIX;/opt/ros/noetic" \
+  -DCMAKE_BUILD_TYPE=Release
+
+cp -a devel/lib/libabsl*.so* install/lib/
+ls -l install/lib/franka_example_controllers/interactive_marker.py
+```
+
+### QP time-limit warnings
+
+```text
+QPsolver did not find optimal solution, exit code OsqpExitCode::kTimeLimitReached
+```
+
+Possible causes include an excessively small `Kmax`, an infeasible CBF constraint under torque/rate limits, noisy derivatives, poor directional mobility, or excessive solver work inside the 1 ms control period.
+
+Diagnostic sequence:
+
+1. stop robot motion;
+2. restart with `trajectory:=hold`;
+3. use `cbf_active:=false` to verify the nominal controller;
+4. restart with a moderate `Kmax` and `alpha:=1.0`;
+5. inspect `/cbf_info` and the controller terminal;
+6. stop the test if timeouts repeat.
+
+### `rosparam set /Kmax ...` does not change controller behavior
+
+Some parameters are read during controller initialization. Updating the ROS parameter server does not automatically change a cached C++ variable. Restart the controller with the new launch argument unless the parameter has been added to the controller's `dynamic_reconfigure` callback and the workspace has been rebuilt.
+
+### Old workspace contaminates the environment
+
+Open a new terminal and run only:
+
+```bash
+source ~/Riccardo/franka_ws_013/env.sh
+```
 
 Check:
 
-- robot IP address;
-- Ethernet interface configuration;
-- firewall rules;
-- Franka web-interface state;
-- robot brakes and external-control activation;
-- firmware and `libfranka` compatibility.
-
-### Abseil library is missing
-
-Apply the copy workaround in [Abseil shared-library workaround](#abseil-shared-library-workaround), then run:
-
 ```bash
-ldd install/lib/libfranka_example_controllers.so | grep 'not found'
+echo "$ROS_PACKAGE_PATH" | tr ':' '\n'
 ```
 
-### OSQP does not return an optimal solution
+Remove references to older Franka workspaces from `~/.bashrc`.
 
-Possible causes include:
+### Clean rebuild
 
-- an infeasible energy constraint combined with torque/rate limits;
-- an excessively small `Kmax`;
-- noisy numerical derivatives;
-- directional mobility near zero;
-- an excessively strict or aggressive experiment;
-- the solver time limit being reached.
+```bash
+cd ~/Riccardo/franka_ws_013
+source /opt/ros/noetic/setup.bash
+export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
 
-Start with:
+rm -rf build devel install
 
-- `trajectory:=hold`;
-- a moderate `Kmax`;
-- `alpha:=1.0`;
-- a principal-axis direction such as `[1,0,0]`;
-- conservative Cartesian stiffness;
-- `rosbag:=false` while debugging startup.
+catkin_make install \
+  -DCMAKE_PREFIX_PATH="$FRANKA_013_PREFIX;/opt/ros/noetic" \
+  -DCMAKE_BUILD_TYPE=Release
 
-### Directional mobility warning
+cp -a devel/lib/libabsl*.so* install/lib/
+```
 
-The selected direction may be weakly controllable at the current configuration. Change the robot configuration or direction and inspect the regularization parameter. Do not simply increase `mobility_epsilon` without understanding the physical effect on the effective-mass estimate.
+### Rosbag output path
 
-### `h` becomes negative
-
-A small negative value can result from sampling, model mismatch, solver tolerance, torque-rate limiting, or numerical derivative error. A sustained or large violation requires stopping the experiment and investigating:
-
-- QP status;
-- torque saturation/rate limits;
-- derivative filtering;
-- model and frame conventions;
-- `Kmax` and `alpha`;
-- timing overruns.
-
-### RViz fails but the controller starts
-
-RViz is not required for torque control. Launch RViz separately or comment out its node while diagnosing visualization configuration.
-
----
-
-## Known limitations
-
-- This is an experimental snapshot, not a maintained upstream Franka distribution.
-- The repository is based on ROS 1 and `franka_ros` 0.10.1-era interfaces.
-- The OSQP and Abseil integration is vendored and may require the shared-library workaround described above.
-- Several launch files contain a developer-specific absolute rosbag output path.
-- Existing controllers initialize OSQP inside the control workflow; real-time guarantees should be evaluated carefully.
-- The directional controller estimates derivatives numerically, which introduces noise and delay.
-- The directional vector is static during a controller run. A time-varying direction would require the derivative of the normalized direction to be included consistently.
-- The directional energy uses only translational task-space motion. Rotational energy is not constrained by this controller.
-- `franka_msgs/Cbf` contains only one scalar `h`; it does not expose directional velocity or effective mass directly.
-- Rosbag logging uses `record -a`, which can generate large files and increase system load.
-- The workspace should be validated in simulation or a controlled test setup before physical experiments, but the provided hardware launch files are the primary tested workflow.
-
----
-
-## Minimal startup checklist
+Several launch files contain a historical absolute output path. Keep recording disabled during initial testing:
 
 ```text
-[ ] Compatible ROS 1 and libfranka installed
-[ ] Dependencies installed with rosdep
-[ ] Rosbag path changed or rosbag:=false
-[ ] catkin_make install completed
-[ ] install/setup.bash sourced
-[ ] No missing libraries in ldd output
-[ ] Robot is reachable over Ethernet
-[ ] Correct robot and arm_id selected
-[ ] Conservative stiffness, Kmax, and trajectory selected
-[ ] Emergency stop accessible
-[ ] Controller first tested with trajectory:=hold
+rosbag:=false
 ```
+
+Find hard-coded paths with:
+
+```bash
+grep -R "/home/dlogmans" -n \
+  ~/Riccardo/franka_ws_013/src/franka_ros/franka_example_controllers/launch
+```
+
+Create a local directory before enabling recording:
+
+```bash
+mkdir -p ~/Riccardo/Rundata
+```
+
+Then update the relevant launch-file path.
 
 ---
 
-## Quick-start command
+## Development workflow
 
-After completing installation and robot preparation:
+After changing controller sources, messages, dynamic-reconfigure files, or launch files:
 
 ```bash
-cd ~/franka_ws
-source /opt/ros/$ROS_DISTRO/setup.bash
-source install/setup.bash
+cd ~/Riccardo/franka_ws_013
+source /opt/ros/noetic/setup.bash
+export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
 
-roslaunch franka_example_controllers \
-  cartesian_impedance_directional_kinetic_energy_cbf_controller.launch \
-  robot_ip:=172.16.0.2 \
-  load_gripper:=false \
-  robot:=fr3 \
-  trajectory:=hold \
-  Kmax:=0.5 \
-  alpha:=1.0 \
-  direction_x:=1.0 \
-  direction_y:=0.0 \
-  direction_z:=0.0 \
-  cbf_active:=true \
-  rosbag:=false
+catkin_make install \
+  -DCMAKE_PREFIX_PATH="$FRANKA_013_PREFIX;/opt/ros/noetic" \
+  -DCMAKE_BUILD_TYPE=Release
+
+cp -a devel/lib/libabsl*.so* install/lib/
+source ~/Riccardo/franka_ws_013/env.sh
 ```
 
-Start with the robot stationary and verify `/cbf_info`, controller state, and solver status before commanding a moving trajectory.
+Verify the plugin and installed library:
+
+```bash
+rospack plugins --attrib=plugin controller_interface \
+  | grep franka_example_controllers
+
+ls -l ~/Riccardo/franka_ws_013/install/lib/libfranka_example_controllers.so
+```
