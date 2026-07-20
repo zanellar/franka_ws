@@ -139,7 +139,14 @@ bool CartesianImpedanceCBFController::init(hardware_interface::RobotHW* robot_hw
 
   QPsettings.verbose = false; // turn off printing of results
   QPsettings.max_iter = 8000; // makes time limit the real limiting factor
-  QPsettings.time_limit = 0.9e-3; // loop should always run within a millisecond
+
+  double qp_time_limit = 0.9e-3;
+  node_handle.param(
+      "qp_time_limit",
+      qp_time_limit,
+      0.9e-3);
+
+  QPsettings.time_limit = qp_time_limit;// loop should always run within a millisecond
 
   // QPsettings.eps_abs = 1e-15;
   // QPsettings.eps_rel = 1e-15;
@@ -178,6 +185,9 @@ void CartesianImpedanceCBFController::starting(const ros::Time& /*time*/) {
 
   // dq EMA setup
   dq_filtered = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.dq.data());
+
+  // Initialize the previous velocity used by saturateQdotRate().
+  dq_saturated = dq_filtered;
 }
 
 void CartesianImpedanceCBFController::update(const ros::Time& time,

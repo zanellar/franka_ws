@@ -14,10 +14,15 @@
 
 cmake_minimum_required(VERSION 3.14)
 
-project(osqp-cpp)
+project(osqp-cpp LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ language standard" FORCE)
+set(CMAKE_CXX_STANDARD_REQUIRED ON CACHE BOOL "Require selected C++ standard" FORCE)
+set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL "Disable compiler-specific extensions" FORCE)
+
+# Ensure Abseil targets inherit the same C++ standard as osqp-cpp.
+set(ABSL_PROPAGATE_CXX_STD ON CACHE BOOL
+    "Propagate the selected C++ standard to Abseil targets" FORCE)
 
 # Options.
 option(OSQP-CPP_BUILD_TESTS
@@ -32,7 +37,8 @@ if (NOT TARGET absl::strings OR NOT TARGET absl::status OR NOT TARGET absl::span
   FetchContent_Declare(
     abseil-cpp
     GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
-    GIT_TAG        origin/master
+    GIT_TAG        20240116.2
+    GIT_SHALLOW    TRUE
   )
   FetchContent_MakeAvailable(abseil-cpp)
 else()

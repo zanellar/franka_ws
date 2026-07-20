@@ -1,0 +1,154 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- Robot -->
+  <arg name="robot" default="fr3"/>
+  <arg name="arm_id" default="$(arg robot)"/>
+  <arg name="use_gripper" default="false"/>
+
+  <!-- Gazebo -->
+  <arg name="headless" default="false"/>
+  <arg name="paused" default="false"/>
+  <arg name="rviz" default="true"/>
+
+  <!-- CBF -->
+  <arg name="cbf_active" default="false"/>
+  <arg name="Kmax" default="1.0"/>
+  <arg name="alpha" default="1.0"/>
+  <arg name="damping_ratio" default="1.0"/>
+
+  <!-- A larger limit is suitable for non-real-time Gazebo testing. -->
+  <arg name="qp_time_limit" default="0.01"/>
+
+  <!-- Optional trajectory publisher -->
+  <arg name="start_trajectory" default="false"/>
+  <arg name="trajectory" default="hold"/>
+  <arg name="publish_rate" default="100"/>
+
+  <!-- The current controller reads these as global parameters. -->
+  <param name="alpha"
+         type="double"
+         value="$(arg alpha)"/>
+
+  <param name="cbf_active"
+         type="bool"
+         value="$(arg cbf_active)"/>
+
+  <param name="Kmax"
+         type="double"
+         value="$(arg Kmax)"/>
+
+  <param name="damping_ratio"
+         type="double"
+         value="$(arg damping_ratio)"/>
+
+  <!-- Private parameter of cartesian_impedance_cbf_controller. -->
+  <param name="cartesian_impedance_cbf_controller/qp_time_limit"
+         type="double"
+         value="$(arg qp_time_limit)"/>
+
+  <!-- Start Gazebo. -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="paused" value="true"/>
+    <arg name="gui" value="$(eval not arg('headless'))"/>
+    <arg name="use_sim_time" value="true"/>
+  </include>
+
+  <!-- Generate the FR3 Gazebo URDF. -->
+  <param
+      name="robot_description"
+      command="xacro $(find franka_description)/robots/fr3/fr3.urdf.xacro
+               gazebo:=true
+               hand:=$(arg use_gripper)
+               arm_id:=$(arg arm_id)"/>
+
+  <!-- Parameters required by FrankaHWSim. -->
+  <rosparam
+      command="load"
+      file="$(find franka_gazebo)/config/franka_hw_sim.yaml"
+      subst_value="true"/>
+
+  <!-- State controller and standard simulation controllers. -->
+  <rosparam
+      command="load"
+      file="$(find franka_gazebo)/config/sim_controllers.yaml"
+      subst_value="true"/>
+
+  <!-- Custom CBF controller configuration. -->
+  <rosparam
+      command="load"
+      file="$(find franka_example_controllers)/config/franka_example_controllers.yaml"
+      subst_value="true"/>
+
+  <!-- Spawn the robot in a bent, non-singular configuration. -->
+  <arg name="unpause"
+       value="$(eval '' if arg('paused') else '-unpause')"/>
+
+  <node
+      name="$(arg arm_id)_model_spawner"
+      pkg="gazebo_ros"
+      type="spawn_model"
+      output="screen"
+      args="-param robot_description
+            -urdf
+            -model $(arg arm_id)
+            $(arg unpause)
+            -J $(arg arm_id)_joint1 0.0
+            -J $(arg arm_id)_joint2 -0.785398163
+            -J $(arg arm_id)_joint3 0.0
+            -J $(arg arm_id)_joint4 -2.35619449
+            -J $(arg arm_id)_joint5 0.0
+            -J $(arg arm_id)_joint6 1.57079632679
+            -J $(arg arm_id)_joint7 0.785398163397"/>
+
+  <!-- Start controllers only after FrankaHWSim is initialized. -->
+  <node
+      name="controller_spawner"
+      pkg="controller_manager"
+      type="spawner"
+      output="screen"
+      args="--wait-for initialized
+            franka_state_controller
+            cartesian_impedance_cbf_controller"/>
+
+  <node
+      name="robot_state_publisher"
+      pkg="robot_state_publisher"
+      type="robot_state_publisher"
+      output="screen"/>
+
+  <node
+      name="joint_state_publisher"
+      pkg="joint_state_publisher"
+      type="joint_state_publisher"
+      output="screen">
+
+    <rosparam param="source_list">
+      [franka_state_controller/joint_states]
+    </rosparam>
+
+    <param name="rate" value="30"/>
+  </node>
+
+  <!-- Disabled by default because the controller initially holds its spawn pose. -->
+  <node
+      name="trajectory_publisher"
+      pkg="franka_trajectory"
+      type="$(arg trajectory)"
+      output="screen"
+      if="$(arg start_trajectory)">
+
+    <param name="publish_rate"
+           value="$(arg publish_rate)"/>
+  </node>
+
+  <node
+      name="rviz"
+      pkg="rviz"
+      type="rviz"
+      output="screen"
+      if="$(arg rviz)"
+      args="-d $(find franka_example_controllers)/launch/rviz/franka_description_with_marker.rviz
+            -f $(arg arm_id)_link0"/>
+
+</launch>

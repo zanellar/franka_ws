@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.4)
 project(franka_example_controllers)
 
 set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(catkin REQUIRED COMPONENTS
   controller_interface
@@ -26,11 +27,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(Eigen3 REQUIRED)
-find_package(Franka 0.9.0 QUIET)
-
-if(NOT Franka_FOUND)
-  find_package(Franka 0.8.0 REQUIRED)
-endif()
+find_package(Franka 0.13.3 REQUIRED)
 
 # merge Franka + INCLUDE_DIRS in topological order
 list_insert_in_workspace_order(catkin_INCLUDE_DIRS ${Franka_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS})
@@ -119,6 +116,13 @@ target_link_libraries(franka_example_controllers PUBLIC
 
 #attempt 4: https://stackoverflow.com/questions/6984479/cmake-how-to-link-a-library-without-automatic-search-function-find-package
 #target_link_libraries(franka_example_controllers PRIVATE ../../../libs/osqp-cpp)
+
+set(OSQP-CPP_BUILD_TESTS OFF CACHE BOOL
+    "Disable embedded osqp-cpp tests" FORCE)
+
+set(ABSL_BUILD_TESTING OFF CACHE BOOL
+    "Disable embedded Abseil tests" FORCE)
+
 add_subdirectory(lib)
 
 target_include_directories(franka_example_controllers SYSTEM PUBLIC
