@@ -47,9 +47,10 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   using RowVector7d = Eigen::Matrix<double, 1, 7>;
   using SparseMatrix = Eigen::SparseMatrix<double, Eigen::ColMajor, osqp::c_int>;
 
-  struct CbfResult {
+  struct CbfResult {  
     Vector7d tau_safe{Vector7d::Zero()};
     double h{0.0};
+    double directional_kinetic_energy{0.0};
     uint8_t solver_status{0};
   };
 

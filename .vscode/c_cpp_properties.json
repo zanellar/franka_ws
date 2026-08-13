@@ -1,0 +1,26 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/patrickkoehorst24/Riccardo/franka_ws_013/devel/include/**",
+        "/home/patrickkoehorst24/Riccardo/libfranka-0.13.3/install/include/**",
+        "/opt/ros/noetic/include/**",
+        "/home/patrickkoehorst24/Riccardo/franka_ws_013/src/franka_ros/franka_control/include/**",
+        "/home/patrickkoehorst24/Riccardo/franka_ws_013/src/franka_ros/franka_example_controllers/include/**",
+        "/home/patrickkoehorst24/Riccardo/franka_ws_013/src/franka_ros/franka_gazebo/include/**",
+        "/home/patrickkoehorst24/Riccardo/franka_ws_013/src/franka_ros/franka_hw/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

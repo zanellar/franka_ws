@@ -8,3 +8,4 @@ float64 h
 uint8 solver_status
 float64 kinetic_energy
 float64 Kmax
+float64 directional_kinetic_energy

@@ -304,6 +304,9 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   const Vector7d dq = Eigen::Map<const Vector7d>(robot_state.dq.data());
   const Vector7d tau_J_d = Eigen::Map<const Vector7d>(robot_state.tau_J_d.data());
   const Vector7d tau_J = Eigen::Map<const Vector7d>(robot_state.tau_J.data());
+
+  const double kinetic_energy = 0.5 * dq.transpose() * mass * dq;
+
   const Eigen::Affine3d transform(
       Eigen::Map<const Eigen::Matrix4d>(robot_state.O_T_EE.data()));
   const Eigen::Vector3d position(transform.translation());
@@ -368,6 +371,9 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   u_ext_map.setZero();
 
   cbf_info_.h = cbf_result.h;
+  cbf_info_.kinetic_energy = kinetic_energy;
+  cbf_info_.directional_kinetic_energy = cbf_result.directional_kinetic_energy;
+  cbf_info_.Kmax = Kmax_;
   cbf_info_.solver_status = cbf_active_ ? cbf_result.solver_status : 0;
   cbf_info_.header.stamp = time;
   cbf_publisher_.publish(cbf_info_);
@@ -431,6 +437,7 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
       0.5 * effective_mass * directional_velocity * directional_velocity;
   const double h = Kmax_ - directional_energy;
   result.h = h;
+  result.directional_kinetic_energy = directional_energy;
 
   RowVector7d directional_jacobian_dot = RowVector7d::Zero();
   double effective_mass_dot = 0.0;
@@ -561,6 +568,9 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::complianceParamCal
       damping_ratio_ * 2.0 * std::sqrt(config.rotational_stiffness) *
       Eigen::Matrix3d::Identity();
   nullspace_stiffness_target_ = config.nullspace_stiffness;
+  cbf_active_ = config.cbf_active;
+  Kmax_ = config.Kmax;
+  alpha_ = config.alpha;
 }
 
 void CartesianImpedanceDirectionalKineticEnergyCBFController::equilibriumPoseCallback(
