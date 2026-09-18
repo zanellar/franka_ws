@@ -47,8 +47,10 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   using RowVector7d = Eigen::Matrix<double, 1, 7>;
   using SparseMatrix = Eigen::SparseMatrix<double, Eigen::ColMajor, osqp::c_int>;
 
-  struct CbfResult {  
-    Vector7d tau_safe{Vector7d::Zero()};
+  struct CbfResult {
+    // Bias-free control returned by the CBF. The Coriolis bias is added only
+    // afterwards in update(): tau_command = u_safe + u_bias.
+    Vector7d u_safe{Vector7d::Zero()};
     double h{0.0};
     double directional_kinetic_energy{0.0};
     uint8_t solver_status{0};
@@ -58,8 +60,8 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   bool initializeQpSolver();
 
   CbfResult directionalKineticEnergyCbf(
-      const Vector7d& tau_nominal,
-      const Vector7d& coriolis,
+      const Vector7d& u_nominal,
+      const Vector7d& u_bias,
       const Matrix7d& mass,
       const Matrix6x7d& jacobian,
       const Vector7d& dq,
@@ -80,9 +82,11 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   double filter_params_{0.005};
   double nullspace_stiffness_{20.0};
   double nullspace_stiffness_target_{20.0};
-  const double delta_tau_max_{1.0};
+  const double delta_tau_max_{1000.0};
+
   const Vector7d tau_max_{
-      (Vector7d() << 87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0).finished()};
+        (Vector7d() << 1000.0, 1000.0, 1000.0, 1000.0,
+                    1000.0, 1000.0, 1000.0).finished()};
 
   Eigen::Matrix<double, 6, 6> cartesian_stiffness_{
       Eigen::Matrix<double, 6, 6>::Zero()};
@@ -112,15 +116,17 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   double alpha_{1.0};
   double damping_ratio_{1.0};
   double mobility_epsilon_{1.0e-8};
-  double derivative_filter_alpha_{0.05};
   bool cbf_active_{true};
   Eigen::Vector3d direction_{Eigen::Vector3d::UnitX()};
 
-  RowVector7d previous_directional_jacobian_{RowVector7d::Zero()};
-  RowVector7d directional_jacobian_dot_filtered_{RowVector7d::Zero()};
-  double previous_effective_mass_{0.0};
-  double effective_mass_dot_filtered_{0.0};
-  bool derivative_history_initialized_{false};
+  // Persistent history used only for numerical derivatives, matching the
+  // reference pseudocode:
+  //   J_dot[k] ~= (J[k] - J[k-1]) / dt
+  //   M_dot[k] ~= (M[k] - M[k-2]) / (2 dt)
+  Matrix6x7d previous_jacobian_{Matrix6x7d::Zero()};
+  Matrix7d previous_mass_{Matrix7d::Zero()};
+  Matrix7d previous_mass_2_{Matrix7d::Zero()};
+  int derivative_sample_count_{0};
 
   SparseMatrix objective_matrix_{7, 7};
   SparseMatrix constraint_matrix_{8, 7};

@@ -53,7 +53,6 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::readParameters(
   node_handle.param("/direction_y", direction_y, 0.0);
   node_handle.param("/direction_z", direction_z, 0.0);
   node_handle.param("/mobility_epsilon", mobility_epsilon_, 1.0e-8);
-  node_handle.param("/derivative_filter_alpha", derivative_filter_alpha_, 0.05);
 
   direction_ << direction_x, direction_y, direction_z;
   const double direction_norm = direction_.norm();
@@ -82,19 +81,15 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::readParameters(
         "positive");
     return false;
   }
-  if (!std::isfinite(derivative_filter_alpha_) || derivative_filter_alpha_ < 0.0 ||
-      derivative_filter_alpha_ > 1.0) {
-    ROS_ERROR_STREAM(
-        "CartesianImpedanceDirectionalKineticEnergyCBFController: derivative_filter_alpha "
-        "must be in [0, 1]");
-    return false;
-  }
 
   return true;
 }
 
 bool CartesianImpedanceDirectionalKineticEnergyCBFController::initializeQpSolver() {
+  // OSQP uses 0.5*u^T*P*u + q^T*u. P=2I and q=-2*u_nominal
+  // therefore reproduce ||u-u_nominal||^2 up to an additive constant.
   objective_matrix_.setIdentity();
+  objective_matrix_ *= 2.0;
   objective_matrix_.makeCompressed();
 
   // Fixed sparsity: one CBF row and seven identity rows for torque/rate bounds.
@@ -270,22 +265,12 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::starting(
   orientation_d_target_ = orientation_d_;
   q_d_nullspace_ = q_initial;
 
-  previous_directional_jacobian_ = direction_.transpose() * jacobian.topRows<3>();
-  directional_jacobian_dot_filtered_.setZero();
-  effective_mass_dot_filtered_ = 0.0;
-  derivative_history_initialized_ = false;
-
-  Eigen::LDLT<Matrix7d> mass_ldlt(mass);
-  if (mass_ldlt.info() == Eigen::Success) {
-    const Vector7d mass_inverse_jacobian_transpose =
-        mass_ldlt.solve(previous_directional_jacobian_.transpose());
-    const double mobility =
-        (previous_directional_jacobian_ * mass_inverse_jacobian_transpose)(0, 0);
-    if (std::isfinite(mobility) && mobility > 0.0) {
-      previous_effective_mass_ = 1.0 / std::max(mobility, mobility_epsilon_);
-      derivative_history_initialized_ = true;
-    }
-  }
+  // Reset the persistent derivative history. The first J_dot sample and the
+  // first two M_dot samples are intentionally zero, matching the pseudocode.
+  previous_jacobian_ = jacobian;
+  previous_mass_ = mass;
+  previous_mass_2_ = mass;
+  derivative_sample_count_ = 0;
 }
 
 void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
@@ -305,7 +290,9 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   const Vector7d tau_J_d = Eigen::Map<const Vector7d>(robot_state.tau_J_d.data());
   const Vector7d tau_J = Eigen::Map<const Vector7d>(robot_state.tau_J.data());
 
-  const double kinetic_energy = 0.5 * dq.transpose() * mass * dq;
+  // Total joint-space kinetic energy, published for diagnostics.
+  const double kinetic_energy =
+      0.5 * (dq.transpose() * mass * dq)(0, 0);
 
   const Eigen::Affine3d transform(
       Eigen::Map<const Eigen::Matrix4d>(robot_state.O_T_EE.data()));
@@ -332,13 +319,29 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
       (Matrix7d::Identity() - jacobian.transpose() * jacobian_transpose_pinv) *
       (nullspace_stiffness_ * (q_d_nullspace_ - q) -
        2.0 * std::sqrt(nullspace_stiffness_) * dq);
-  const Vector7d tau_nominal = tau_task + tau_nullspace + coriolis;
 
+  // Bias-free nominal control used by the CBF, matching the notes/pseudocode.
+  const Vector7d u_nominal = tau_task + tau_nullspace;
+
+  // Franka gravity compensation is handled by the robot. The model Coriolis
+  // term is used as the additive bias outside the CBF:
+  //   tau_command = u_safe + u_bias.
+  const Vector7d u_bias = coriolis;
+  const Vector7d tau_nominal = u_nominal + u_bias;
+
+  // Always evaluate the directional-energy model so h and K_dir are available
+  // for diagnostics even when the CBF is disabled. directionalKineticEnergyCbf()
+  // returns before solving the QP when cbf_active_ == false.
   const CbfResult cbf_result = directionalKineticEnergyCbf(
-      tau_nominal, coriolis, mass, jacobian, dq, tau_J_d, period.toSec());
+      u_nominal, u_bias, mass, jacobian, dq, tau_J_d, period.toSec());
 
-  Vector7d tau_command = cbf_active_ ? cbf_result.tau_safe
-                                     : saturateTorqueRate(tau_nominal, tau_J_d);
+  // In the active CBF case, u_safe is either the QP solution or exactly
+  // u_nominal on any model/QP failure. Coriolis is added only after the CBF.
+  // When the CBF is disabled, preserve the original Franka nominal torque-rate
+  // saturation behavior.
+  Vector7d tau_command =
+      cbf_active_ ? (cbf_result.u_safe + u_bias)
+                  : saturateTorqueRate(tau_nominal, tau_J_d);
 
   for (size_t joint = 0; joint < 7; ++joint) {
     joint_handles_[joint].setCommand(tau_command(joint));
@@ -365,7 +368,7 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   Eigen::Map<Vector7d> u_saturated_map(&cbf_info_.u_saturated[0]);
   Eigen::Map<Vector7d> u_ext_map(&cbf_info_.u_ext[0]);
   u_des_map = tau_nominal;
-  u_cbf_map = cbf_result.tau_safe;
+  u_cbf_map = cbf_result.u_safe + u_bias;
   u_measured_map = tau_J;
   u_saturated_map = tau_command;
   u_ext_map.setZero();
@@ -381,96 +384,150 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
 
 CartesianImpedanceDirectionalKineticEnergyCBFController::CbfResult
 CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnergyCbf(
-    const Vector7d& tau_nominal,
-    const Vector7d& coriolis,
+    const Vector7d& u_nominal,
+    const Vector7d& u_bias,
     const Matrix7d& mass,
     const Matrix6x7d& jacobian,
     const Vector7d& dq,
     const Vector7d& tau_J_d,
     double dt) {
   CbfResult result;
-  result.tau_safe = saturateTorqueRate(tau_nominal, tau_J_d);
+
+  // Failure policy: do not modify the nominal bias-free controller command.
+  // update() will still add the model bias afterwards, i.e. tau=u_nominal+u_bias.
+  result.u_safe = u_nominal;
 
   if (!std::isfinite(dt) || dt <= 1.0e-6) {
     dt = 1.0e-3;
   }
 
+  // -------------------------------------------------------------------------
+  // Numerical derivatives of the raw model quantities, matching the
+  // pseudocode. The derivative of Lambda_dir itself is then obtained
+  // analytically below.
+  // -------------------------------------------------------------------------
+  Matrix6x7d jacobian_dot = Matrix6x7d::Zero();
+  Matrix7d mass_dot = Matrix7d::Zero();
+
+  if (derivative_sample_count_ >= 1) {
+    jacobian_dot = (jacobian - previous_jacobian_) / dt;
+  }
+  if (derivative_sample_count_ >= 2) {
+    mass_dot = (mass - previous_mass_2_) / (2.0 * dt);
+  }
+
+  previous_jacobian_ = jacobian;
+  previous_mass_2_ = previous_mass_;
+  previous_mass_ = mass;
+  ++derivative_sample_count_;
+
+  // -------------------------------------------------------------------------
+  // 1-D directional operational space.
+  // direction_ is constant, therefore d_ext_dot=0 and
+  // J_dir_dot = direction^T * J_pos_dot.
+  // -------------------------------------------------------------------------
   const Matrix3x7d translational_jacobian = jacobian.topRows<3>();
+  const Matrix3x7d translational_jacobian_dot = jacobian_dot.topRows<3>();
   const RowVector7d directional_jacobian =
       direction_.transpose() * translational_jacobian;
+  const RowVector7d directional_jacobian_dot =
+      direction_.transpose() * translational_jacobian_dot;
   const double directional_velocity = (directional_jacobian * dq)(0, 0);
 
+  // -------------------------------------------------------------------------
+  // M^{-1} and Lambda_dir.
+  // Use an LDLT solve instead of forming an explicit algebraic inverse, but
+  // the resulting matrix is exactly the M^{-1} required by the derivation.
+  // -------------------------------------------------------------------------
   Eigen::LDLT<Matrix7d> mass_ldlt(mass);
   if (mass_ldlt.info() != Eigen::Success) {
-    ROS_WARN_THROTTLE(
+    ROS_ERROR_STREAM_THROTTLE(
         1.0,
-        "CartesianImpedanceDirectionalKineticEnergyCBFController: Mass matrix factorization "
-        "failed");
+        "\n================ CBF ERROR ================\n"
+        "Directional kinetic-energy CBF: mass-matrix factorization failed.\n"
+        "FALLBACK: sending the UNMODIFIED nominal control u_nominal (+ u_bias).\n"
+        "===========================================");
     result.solver_status = 3;
     return result;
   }
 
-  const Vector7d mass_inverse_jacobian_transpose =
-      mass_ldlt.solve(directional_jacobian.transpose());
-  if (!mass_inverse_jacobian_transpose.allFinite()) {
-    ROS_WARN_THROTTLE(
+  const Matrix7d mass_inverse = mass_ldlt.solve(Matrix7d::Identity());
+  if (!mass_inverse.allFinite()) {
+    ROS_ERROR_STREAM_THROTTLE(
         1.0,
-        "CartesianImpedanceDirectionalKineticEnergyCBFController: Invalid inverse-dynamics "
-        "solution");
+        "\n================ CBF ERROR ================\n"
+        "Directional kinetic-energy CBF: invalid M^{-1}.\n"
+        "FALLBACK: sending the UNMODIFIED nominal control u_nominal (+ u_bias).\n"
+        "===========================================");
     result.solver_status = 3;
     return result;
   }
 
-  const double mobility =
-      (directional_jacobian * mass_inverse_jacobian_transpose)(0, 0);
-  if (!std::isfinite(mobility) || mobility <= 0.0) {
-    ROS_WARN_THROTTLE(
+  const double lambda_dir_inv =
+      (directional_jacobian * mass_inverse * directional_jacobian.transpose())(0, 0);
+  if (!std::isfinite(lambda_dir_inv) || lambda_dir_inv <= mobility_epsilon_) {
+    ROS_ERROR_STREAM_THROTTLE(
         1.0,
-        "CartesianImpedanceDirectionalKineticEnergyCBFController: Directional mobility is "
-        "non-positive");
+        "\n================ CBF ERROR ================\n"
+        "Directional kinetic-energy CBF: directional mobility is singular or too small: "
+            << lambda_dir_inv << "\n"
+        "FALLBACK: sending the UNMODIFIED nominal control u_nominal (+ u_bias).\n"
+        "===========================================");
     result.solver_status = 3;
     return result;
   }
 
-  const double effective_mass = 1.0 / std::max(mobility, mobility_epsilon_);
+  const double lambda_dir = 1.0 / lambda_dir_inv;
+
+  // -------------------------------------------------------------------------
+  // Analytical derivative of Lambda_dir.
+  //
+  // Lambda_dir^{-1} = J_dir M^{-1} J_dir^T
+  //
+  // d/dt Lambda_dir^{-1} =
+  //     J_dir_dot M^{-1} J_dir^T
+  //   + J_dir M^{-1} J_dir_dot^T
+  //   - J_dir M^{-1} M_dot M^{-1} J_dir^T
+  //
+  // Lambda_dir_dot = -Lambda_dir Lambda_dir_inv_dot Lambda_dir.
+  // -------------------------------------------------------------------------
+  const double lambda_dir_inv_dot =
+      (directional_jacobian_dot * mass_inverse * directional_jacobian.transpose())(0, 0) +
+      (directional_jacobian * mass_inverse * directional_jacobian_dot.transpose())(0, 0) -
+      (directional_jacobian * mass_inverse * mass_dot * mass_inverse *
+       directional_jacobian.transpose())(0, 0);
+  const double lambda_dir_dot =
+      -lambda_dir * lambda_dir_inv_dot * lambda_dir;
+
+  // Directional kinetic energy and barrier function.
   const double directional_energy =
-      0.5 * effective_mass * directional_velocity * directional_velocity;
+      0.5 * lambda_dir * directional_velocity * directional_velocity;
   const double h = Kmax_ - directional_energy;
   result.h = h;
   result.directional_kinetic_energy = directional_energy;
 
-  RowVector7d directional_jacobian_dot = RowVector7d::Zero();
-  double effective_mass_dot = 0.0;
-  if (derivative_history_initialized_) {
-    const RowVector7d raw_jacobian_dot =
-        (directional_jacobian - previous_directional_jacobian_) / dt;
-    const double raw_effective_mass_dot =
-        (effective_mass - previous_effective_mass_) / dt;
-
-    directional_jacobian_dot_filtered_ =
-        derivative_filter_alpha_ * raw_jacobian_dot +
-        (1.0 - derivative_filter_alpha_) * directional_jacobian_dot_filtered_;
-    effective_mass_dot_filtered_ =
-        derivative_filter_alpha_ * raw_effective_mass_dot +
-        (1.0 - derivative_filter_alpha_) * effective_mass_dot_filtered_;
-
-    directional_jacobian_dot = directional_jacobian_dot_filtered_;
-    effective_mass_dot = effective_mass_dot_filtered_;
+  // If the CBF is disabled, keep calculating/publishing the energy diagnostics
+  // and derivative history, but do not modify u_nominal and do not solve the QP.
+  if (!cbf_active_) {
+    result.solver_status = 0;
+    return result;
   }
 
-  previous_directional_jacobian_ = directional_jacobian;
-  previous_effective_mass_ = effective_mass;
-  derivative_history_initialized_ = true;
-
-  // With gravity compensated internally by Franka and Coriolis added to tau_nominal:
-  //   M*qdd = tau - coriolis
-  //   h_dot = a*tau + b
+  // -------------------------------------------------------------------------
+  // CBF derivative in the compensated coordinates used by the notes:
+  //
+  //   M qdd = u
+  //   h_dot = a u + b
+  //
+  // Coriolis is NOT part of a or b. It is added outside the CBF as u_bias.
+  // -------------------------------------------------------------------------
   const RowVector7d a =
-      -effective_mass * directional_velocity * mass_inverse_jacobian_transpose.transpose();
+      -directional_velocity * lambda_dir * directional_jacobian * mass_inverse;
   const double b =
-      -effective_mass * directional_velocity * (directional_jacobian_dot * dq)(0, 0) -
-      0.5 * effective_mass_dot * directional_velocity * directional_velocity -
-      (a * coriolis)(0, 0);
+      -directional_velocity * lambda_dir * (directional_jacobian_dot * dq)(0, 0) -
+      0.5 * directional_velocity * lambda_dir_dot * directional_velocity;
+
+  // h_dot + alpha*h >= 0  ->  a*u >= -alpha*h - b.
   const double cbf_lower_bound = -alpha_ * h - b;
 
   for (int joint = 0; joint < 7; ++joint) {
@@ -480,22 +537,32 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
 
   lower_bounds_(0) = cbf_lower_bound;
   upper_bounds_(0) = kInfinity_;
+
+  // The QP variable u is bias-free, but Franka torque/rate constraints apply
+  // to the physical commanded torque tau = u + u_bias. Shift each physical
+  // bound by -u_bias so the optimization variable remains the same u used in
+  // the CBF derivation.
   for (int joint = 0; joint < 7; ++joint) {
     lower_bounds_(joint + 1) =
-        std::max(-tau_max_(joint), tau_J_d(joint) - delta_tau_max_);
+        std::max(-tau_max_(joint) - u_bias(joint),
+                 tau_J_d(joint) - delta_tau_max_ - u_bias(joint));
     upper_bounds_(joint + 1) =
-        std::min(tau_max_(joint), tau_J_d(joint) + delta_tau_max_);
+        std::min(tau_max_(joint) - u_bias(joint),
+                 tau_J_d(joint) + delta_tau_max_ - u_bias(joint));
   }
 
-  const Vector7d objective_vector = -tau_nominal;
+  const Vector7d objective_vector = -2.0 * u_nominal;
   const absl::Status matrix_status = qp_solver_.UpdateConstraintMatrix(constraint_matrix_);
   const absl::Status objective_status = qp_solver_.SetObjectiveVector(objective_vector);
   const absl::Status bounds_status = qp_solver_.SetBounds(lower_bounds_, upper_bounds_);
 
   if (!matrix_status.ok() || !objective_status.ok() || !bounds_status.ok()) {
-    ROS_WARN_THROTTLE(
+    ROS_ERROR_STREAM_THROTTLE(
         1.0,
-        "CartesianImpedanceDirectionalKineticEnergyCBFController: Failed to update OSQP data");
+        "\n================ CBF ERROR ================\n"
+        "Directional kinetic-energy CBF: failed to update OSQP data.\n"
+        "FALLBACK: sending the UNMODIFIED nominal control u_nominal (+ u_bias).\n"
+        "===========================================");
     result.solver_status = 4;
     return result;
   }
@@ -503,36 +570,42 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
   const osqp::OsqpExitCode exit_code = qp_solver_.Solve();
   if (exit_code != osqp::OsqpExitCode::kOptimal &&
       exit_code != osqp::OsqpExitCode::kOptimalInaccurate) {
-    ROS_WARN_THROTTLE(
+    ROS_ERROR_STREAM_THROTTLE(
         1.0,
-        "CartesianImpedanceDirectionalKineticEnergyCBFController: OSQP failed with status %s",
-        osqp::ToString(exit_code).c_str());
+        "\n================ CBF QP INFEASIBLE / FAILED ================\n"
+        "Directional kinetic-energy CBF: OSQP status: "
+            << osqp::ToString(exit_code) << "\n"
+        "FALLBACK: sending the UNMODIFIED nominal control u_nominal (+ u_bias).\n"
+        "NO CBF SAFETY MODIFICATION IS APPLIED IN THIS CONTROL CYCLE.\n"
+        "============================================================");
     result.solver_status = 5;
     return result;
   }
 
   const Eigen::VectorXd solution = qp_solver_.primal_solution();
   if (solution.size() != 7 || !solution.allFinite()) {
-    ROS_WARN_THROTTLE(
+    ROS_ERROR_STREAM_THROTTLE(
         1.0,
-        "CartesianImpedanceDirectionalKineticEnergyCBFController: Invalid OSQP solution");
+        "\n================ CBF ERROR ================\n"
+        "Directional kinetic-energy CBF: invalid OSQP solution.\n"
+        "FALLBACK: sending the UNMODIFIED nominal control u_nominal (+ u_bias).\n"
+        "===========================================");
     result.solver_status = 5;
     return result;
   }
 
-  result.tau_safe = solution;
+  result.u_safe = solution;
   result.solver_status =
       exit_code == osqp::OsqpExitCode::kOptimal ? static_cast<uint8_t>(1)
                                                  : static_cast<uint8_t>(2);
 
   const double safe_constraint =
-      (a * result.tau_safe)(0, 0) + b + alpha_ * h;
+      (a * result.u_safe)(0, 0) + b + alpha_ * h;
   if (safe_constraint < -1.0e-5) {
-    ROS_WARN_THROTTLE(
+    ROS_ERROR_STREAM_THROTTLE(
         1.0,
-        "CartesianImpedanceDirectionalKineticEnergyCBFController: CBF constraint violation: "
-        "%f",
-        safe_constraint);
+        "Directional kinetic-energy CBF constraint violation after solve: "
+            << safe_constraint);
   }
 
   return result;
@@ -568,6 +641,10 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::complianceParamCal
       damping_ratio_ * 2.0 * std::sqrt(config.rotational_stiffness) *
       Eigen::Matrix3d::Identity();
   nullspace_stiffness_target_ = config.nullspace_stiffness;
+
+  // These values are updated through the dynamic-reconfigure service.
+  // trajectory_publisher/set_experiment_command forwards cbf_active, Kmax
+  // and alpha to this configuration.
   cbf_active_ = config.cbf_active;
   Kmax_ = config.Kmax;
   alpha_ = config.alpha;
