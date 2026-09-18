@@ -2,6 +2,7 @@
 // Use of this source code is governed by the Apache-2.0 license, see LICENSE
 #pragma once
 
+#include <boost/thread/recursive_mutex.hpp>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -25,6 +26,8 @@
 #include <franka_hw/franka_model_interface.h>
 #include <franka_hw/franka_state_interface.h>
 #include <franka_msgs/Cbf.h>
+#include <franka_msgs/StartDirectionalExperiment.h>
+#include <franka_example_controllers/directional_cbf_task_state.h>
 
 namespace franka_example_controllers {
 
@@ -40,7 +43,7 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
 
  private:
   using Vector7d = Eigen::Matrix<double, 7, 1>;
-  using Vector8d = Eigen::Matrix<double, 8, 1>;
+  using Vector1d = Eigen::Matrix<double, 1, 1>;
   using Matrix7d = Eigen::Matrix<double, 7, 7>;
   using Matrix6x7d = Eigen::Matrix<double, 6, 7>;
   using Matrix3x7d = Eigen::Matrix<double, 3, 7>;
@@ -51,8 +54,8 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
     // Bias-free control returned by the CBF. The Coriolis bias is added only
     // afterwards in update(): tau_command = u_safe + u_bias.
     Vector7d u_safe{Vector7d::Zero()};
-    double h{0.0};
-    double directional_kinetic_energy{0.0};
+    double h{std::numeric_limits<double>::quiet_NaN()};
+    double directional_kinetic_energy{std::numeric_limits<double>::quiet_NaN()};
     uint8_t solver_status{0};
   };
 
@@ -61,15 +64,24 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
 
   CbfResult directionalKineticEnergyCbf(
       const Vector7d& u_nominal,
-      const Vector7d& u_bias,
       const Matrix7d& mass,
       const Matrix6x7d& jacobian,
       const Vector7d& dq,
-      const Vector7d& tau_J_d,
-      double dt);
+      double dt, bool enforce_cbf);
 
-  Vector7d saturateTorqueRate(const Vector7d& tau_d_calculated,
-                              const Vector7d& tau_J_d) const;
+  bool startExperimentCallback(franka_msgs::StartDirectionalExperiment::Request& request,
+                               franka_msgs::StartDirectionalExperiment::Response& response);
+
+  // Lock ordering: dynamic_config_mutex_, then control_mutex_. update() never
+  // takes dynamic_config_mutex_. Serialize command/config callbacks with update.
+  boost::recursive_mutex dynamic_config_mutex_;
+  std::recursive_mutex control_mutex_;
+  franka_example_controllers::compliance_paramConfig current_config_;
+  ros::ServiceServer start_experiment_service_;
+  DirectionalCbfTaskState task_state_;
+  bool experiment_service_mode_{false};
+  double abort_damping_{20.0};
+  double cbf_residual_tolerance_{1.0e-5};
 
   void complianceParamCallback(franka_example_controllers::compliance_paramConfig& config,
                                uint32_t level);
@@ -82,12 +94,6 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   double filter_params_{0.005};
   double nullspace_stiffness_{20.0};
   double nullspace_stiffness_target_{20.0};
-  const double delta_tau_max_{1000.0};
-
-  const Vector7d tau_max_{
-        (Vector7d() << 1000.0, 1000.0, 1000.0, 1000.0,
-                    1000.0, 1000.0, 1000.0).finished()};
-
   Eigen::Matrix<double, 6, 6> cartesian_stiffness_{
       Eigen::Matrix<double, 6, 6>::Zero()};
   Eigen::Matrix<double, 6, 6> cartesian_stiffness_target_{
@@ -129,9 +135,9 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   int derivative_sample_count_{0};
 
   SparseMatrix objective_matrix_{7, 7};
-  SparseMatrix constraint_matrix_{8, 7};
-  Vector8d lower_bounds_{Vector8d::Zero()};
-  Vector8d upper_bounds_{Vector8d::Zero()};
+  SparseMatrix constraint_matrix_{1, 7};
+  Vector1d lower_bounds_{Vector1d::Zero()};
+  Vector1d upper_bounds_{Vector1d::Zero()};
   osqp::OsqpInstance qp_instance_;
   osqp::OsqpSolver qp_solver_;
   osqp::OsqpSettings qp_settings_;

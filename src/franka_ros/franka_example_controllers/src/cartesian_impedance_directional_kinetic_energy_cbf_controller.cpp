@@ -54,6 +54,18 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::readParameters(
   node_handle.param("/direction_z", direction_z, 0.0);
   node_handle.param("/mobility_epsilon", mobility_epsilon_, 1.0e-8);
 
+  node_handle.param("abort_damping", abort_damping_, 20.0);
+  node_handle.param("cbf_residual_tolerance", cbf_residual_tolerance_, 1.0e-5);
+  const auto& min_config = compliance_paramConfig::__getMin__();
+  const auto& max_config = compliance_paramConfig::__getMax__();
+  if (!std::isfinite(abort_damping_) || abort_damping_ <= 0.0 ||
+      !std::isfinite(cbf_residual_tolerance_) || cbf_residual_tolerance_ < 0.0 ||
+      Kmax_ < min_config.Kmax || Kmax_ > max_config.Kmax ||
+      alpha_ < min_config.alpha || alpha_ > max_config.alpha) {
+    ROS_ERROR("Invalid abort damping, residual tolerance or CBF configuration range");
+    return false;
+  }
+
   direction_ << direction_x, direction_y, direction_z;
   const double direction_norm = direction_.norm();
 
@@ -92,12 +104,11 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::initializeQpSolver
   objective_matrix_ *= 2.0;
   objective_matrix_.makeCompressed();
 
-  // Fixed sparsity: one CBF row and seven identity rows for torque/rate bounds.
+  // Fixed sparsity: only the CBF half-space, as in the Python QP.
   std::vector<Eigen::Triplet<double, osqp::c_int>> constraint_triplets;
-  constraint_triplets.reserve(14);
+  constraint_triplets.reserve(7);
   for (osqp::c_int joint = 0; joint < 7; ++joint) {
     constraint_triplets.emplace_back(0, joint, 1.0);
-    constraint_triplets.emplace_back(joint + 1, joint, 1.0);
   }
   constraint_matrix_.setFromTriplets(constraint_triplets.begin(), constraint_triplets.end());
   constraint_matrix_.makeCompressed();
@@ -107,15 +118,15 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::initializeQpSolver
   qp_instance_.constraint_matrix = constraint_matrix_;
 
   lower_bounds_.head<1>() << -kInfinity_;
-  lower_bounds_.tail<7>() = -tau_max_;
   upper_bounds_.head<1>() << kInfinity_;
-  upper_bounds_.tail<7>() = tau_max_;
   qp_instance_.lower_bounds = lower_bounds_;
   qp_instance_.upper_bounds = upper_bounds_;
 
   qp_settings_.verbose = false;
   qp_settings_.max_iter = 8000;
-  qp_settings_.time_limit = 0.9e-3;
+  // Keep OSQP's default: no wall-clock timeout. max_iter remains a finite gate.
+  qp_settings_.eps_abs = 1.0e-7;
+  qp_settings_.eps_rel = 1.0e-7;
   qp_settings_.rho = 0.1;
   qp_settings_.sigma = 1.0e-6;
   qp_settings_.alpha = 1.6;
@@ -221,9 +232,14 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::init(
 
   dynamic_reconfigure_compliance_param_node_ =
       ros::NodeHandle(node_handle.getNamespace() + "/dynamic_reconfigure_compliance_param_node");
+  // Seed the server namespace before constructing it: setCallback immediately
+  // invokes the callback with this initial configuration.
+  dynamic_reconfigure_compliance_param_node_.setParam("Kmax", Kmax_);
+  dynamic_reconfigure_compliance_param_node_.setParam("alpha", alpha_);
+  dynamic_reconfigure_compliance_param_node_.setParam("cbf_active", cbf_active_);
   dynamic_server_compliance_param_ = std::make_unique<
       dynamic_reconfigure::Server<franka_example_controllers::compliance_paramConfig>>(
-      dynamic_reconfigure_compliance_param_node_);
+      dynamic_config_mutex_, dynamic_reconfigure_compliance_param_node_);
   dynamic_server_compliance_param_->setCallback(boost::bind(
       &CartesianImpedanceDirectionalKineticEnergyCBFController::complianceParamCallback, this, _1,
       _2));
@@ -236,8 +252,13 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::init(
   cartesian_damping_.setZero();
 
   if (!initializeQpSolver()) {
-    return false;
+    task_state_.fail(4);
+    ROS_ERROR("Directional task aborted during QP setup; experiment service remains available");
   }
+
+  start_experiment_service_ = node_handle.advertiseService(
+      "start_experiment",
+      &CartesianImpedanceDirectionalKineticEnergyCBFController::startExperimentCallback, this);
 
   ROS_INFO_STREAM(
       "CartesianImpedanceDirectionalKineticEnergyCBFController initialized with direction ["
@@ -248,6 +269,7 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::init(
 
 void CartesianImpedanceDirectionalKineticEnergyCBFController::starting(
     const ros::Time& /*time*/) {
+  std::lock_guard<std::recursive_mutex> lock(control_mutex_);
   const franka::RobotState initial_state = state_handle_->getRobotState();
   const std::array<double, 49> mass_array = model_handle_->getMass();
   const std::array<double, 42> jacobian_array =
@@ -276,6 +298,7 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::starting(
 void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
     const ros::Time& time,
     const ros::Duration& period) {
+  std::lock_guard<std::recursive_mutex> lock(control_mutex_);
   const franka::RobotState robot_state = state_handle_->getRobotState();
   const std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
   const std::array<double, 49> mass_array = model_handle_->getMass();
@@ -287,7 +310,6 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   const Matrix6x7d jacobian = Eigen::Map<const Matrix6x7d>(jacobian_array.data());
   const Vector7d q = Eigen::Map<const Vector7d>(robot_state.q.data());
   const Vector7d dq = Eigen::Map<const Vector7d>(robot_state.dq.data());
-  const Vector7d tau_J_d = Eigen::Map<const Vector7d>(robot_state.tau_J_d.data());
   const Vector7d tau_J = Eigen::Map<const Vector7d>(robot_state.tau_J.data());
 
   // Total joint-space kinetic energy, published for diagnostics.
@@ -298,6 +320,21 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
       Eigen::Map<const Eigen::Matrix4d>(robot_state.O_T_EE.data()));
   const Eigen::Vector3d position(transform.translation());
   Eigen::Quaterniond orientation(transform.rotation());
+
+  if (task_state_.consumeStartRequest()) {
+    // Restart from the measured pose; keep the new requested target.
+    position_d_ = position;
+    orientation_d_ = orientation;
+    q_d_nullspace_ = q;
+    previous_jacobian_ = jacobian;
+    previous_mass_ = mass;
+    previous_mass_2_ = mass;
+    derivative_sample_count_ = 0;
+    if (cbf_active_ && !initializeQpSolver()) {
+      task_state_.fail(4);
+      ROS_ERROR("Directional experiment aborted: could not reinitialize OSQP");
+    }
+  }
 
   Eigen::Matrix<double, 6, 1> error;
   error.head<3>() = position - position_d_;
@@ -310,7 +347,8 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   error.tail<3>() = -transform.rotation() * error.tail<3>();
 
   Eigen::MatrixXd jacobian_transpose_pinv;
-  pseudoInverse(jacobian.transpose(), jacobian_transpose_pinv);
+  jacobian_transpose_pinv = Eigen::MatrixXd::Zero(6, 7);
+  if (jacobian.allFinite()) pseudoInverse(jacobian.transpose(), jacobian_transpose_pinv);
 
   const Vector7d tau_task =
       jacobian.transpose() *
@@ -329,19 +367,38 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   const Vector7d u_bias = coriolis;
   const Vector7d tau_nominal = u_nominal + u_bias;
 
-  // Always evaluate the directional-energy model so h and K_dir are available
-  // for diagnostics even when the CBF is disabled. directionalKineticEnergyCbf()
-  // returns before solving the QP when cbf_active_ == false.
+  // Continue diagnostics while aborted, but do not solve or resume on a
+  // periodic pose message. Only start_experiment can request another attempt.
   const CbfResult cbf_result = directionalKineticEnergyCbf(
-      u_nominal, u_bias, mass, jacobian, dq, tau_J_d, period.toSec());
+      u_nominal, mass, jacobian, dq, period.toSec(), cbf_active_ && !task_state_.aborted());
+  if (!task_state_.aborted() && cbf_result.solver_status >= 3) {
+    task_state_.fail(cbf_result.solver_status);
+    ROS_ERROR_STREAM("Directional experiment ABORTED (status "
+                     << static_cast<int>(task_state_.error())
+                     << "). Joint braking active. Send a new set_experiment_command to retry.");
+  }
 
-  // In the active CBF case, u_safe is either the QP solution or exactly
-  // u_nominal on any model/QP failure. Coriolis is added only after the CBF.
-  // When the CBF is disabled, preserve the original Franka nominal torque-rate
-  // saturation behavior.
-  Vector7d tau_command =
-      cbf_active_ ? (cbf_result.u_safe + u_bias)
-                  : saturateTorqueRate(tau_nominal, tau_J_d);
+  Vector7d tau_command = cbf_result.u_safe + u_bias;
+  if (!tau_command.allFinite()) {
+    ROS_ERROR_THROTTLE(1.0, "Directional experiment aborted: non-finite commanded torque");
+    task_state_.fail(3);
+  }
+  if (task_state_.aborted()) {
+    // Gravity is added by FrankaHWSim. Do not add Coriolis here. A positive
+    // inertia-weighted viscous brake dissipates total energy without the very
+    // large deceleration of a fixed damping gain on low-inertia wrist joints.
+    // This abort action is not a certified directional-CBF solution.
+    tau_command.setZero();
+    if (dq.allFinite()) {
+      Eigen::LDLT<Matrix7d> brake_mass;
+      if (mass.allFinite()) brake_mass.compute(mass);
+      if (mass.allFinite() && brake_mass.info() == Eigen::Success && brake_mass.isPositive()) {
+        tau_command = -abort_damping_ * mass * dq;
+      } else {
+        tau_command = -dq;  // Model-independent viscous braking if M is invalid.
+      }
+    }
+  }
 
   for (size_t joint = 0; joint < 7; ++joint) {
     joint_handles_[joint].setCommand(tau_command(joint));
@@ -357,9 +414,11 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   {
     std::lock_guard<std::mutex> position_d_target_mutex_lock(
         position_and_orientation_d_target_mutex_);
-    position_d_ =
-        filter_params_ * position_d_target_ + (1.0 - filter_params_) * position_d_;
-    orientation_d_ = orientation_d_.slerp(filter_params_, orientation_d_target_);
+    if (!task_state_.aborted()) {
+      position_d_ =
+          filter_params_ * position_d_target_ + (1.0 - filter_params_) * position_d_;
+      orientation_d_ = orientation_d_.slerp(filter_params_, orientation_d_target_);
+    }
   }
 
   Eigen::Map<Vector7d> u_des_map(&cbf_info_.u_des[0]);
@@ -368,7 +427,7 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   Eigen::Map<Vector7d> u_saturated_map(&cbf_info_.u_saturated[0]);
   Eigen::Map<Vector7d> u_ext_map(&cbf_info_.u_ext[0]);
   u_des_map = tau_nominal;
-  u_cbf_map = cbf_result.u_safe + u_bias;
+  u_cbf_map = tau_command;
   u_measured_map = tau_J;
   u_saturated_map = tau_command;
   u_ext_map.setZero();
@@ -377,7 +436,7 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   cbf_info_.kinetic_energy = kinetic_energy;
   cbf_info_.directional_kinetic_energy = cbf_result.directional_kinetic_energy;
   cbf_info_.Kmax = Kmax_;
-  cbf_info_.solver_status = cbf_active_ ? cbf_result.solver_status : 0;
+  cbf_info_.solver_status = task_state_.aborted() ? task_state_.error() : cbf_result.solver_status;
   cbf_info_.header.stamp = time;
   cbf_publisher_.publish(cbf_info_);
 }
@@ -385,17 +444,21 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
 CartesianImpedanceDirectionalKineticEnergyCBFController::CbfResult
 CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnergyCbf(
     const Vector7d& u_nominal,
-    const Vector7d& u_bias,
     const Matrix7d& mass,
     const Matrix6x7d& jacobian,
     const Vector7d& dq,
-    const Vector7d& tau_J_d,
-    double dt) {
+    double dt, bool enforce_cbf) {
   CbfResult result;
 
-  // Failure policy: do not modify the nominal bias-free controller command.
-  // update() will still add the model bias afterwards, i.e. tau=u_nominal+u_bias.
+  // update() gates every failure before sending commands to the joints.
+  // The nominal input is returned only for the intentional CBF bypass.
   result.u_safe = u_nominal;
+  if (!mass.allFinite() || !jacobian.allFinite() || !dq.allFinite() ||
+      !u_nominal.allFinite()) {
+    ROS_ERROR_THROTTLE(1.0, "Directional CBF: non-finite model/state/control");
+    result.solver_status = 3;
+    return result;
+  }
 
   if (!std::isfinite(dt) || dt <= 1.0e-6) {
     dt = 1.0e-3;
@@ -440,12 +503,12 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
   // the resulting matrix is exactly the M^{-1} required by the derivation.
   // -------------------------------------------------------------------------
   Eigen::LDLT<Matrix7d> mass_ldlt(mass);
-  if (mass_ldlt.info() != Eigen::Success) {
+  if (mass_ldlt.info() != Eigen::Success || !mass_ldlt.isPositive()) {
     ROS_ERROR_STREAM_THROTTLE(
         1.0,
         "\n================ CBF ERROR ================\n"
         "Directional kinetic-energy CBF: mass-matrix factorization failed.\n"
-        "FALLBACK: sending the UNMODIFIED nominal control u_nominal (+ u_bias).\n"
+        "ABORT: nominal control will not be applied.\n"
         "===========================================");
     result.solver_status = 3;
     return result;
@@ -457,7 +520,7 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
         1.0,
         "\n================ CBF ERROR ================\n"
         "Directional kinetic-energy CBF: invalid M^{-1}.\n"
-        "FALLBACK: sending the UNMODIFIED nominal control u_nominal (+ u_bias).\n"
+        "ABORT: nominal control will not be applied.\n"
         "===========================================");
     result.solver_status = 3;
     return result;
@@ -471,7 +534,7 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
         "\n================ CBF ERROR ================\n"
         "Directional kinetic-energy CBF: directional mobility is singular or too small: "
             << lambda_dir_inv << "\n"
-        "FALLBACK: sending the UNMODIFIED nominal control u_nominal (+ u_bias).\n"
+        "ABORT: nominal control will not be applied.\n"
         "===========================================");
     result.solver_status = 3;
     return result;
@@ -508,7 +571,7 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
 
   // If the CBF is disabled, keep calculating/publishing the energy diagnostics
   // and derivative history, but do not modify u_nominal and do not solve the QP.
-  if (!cbf_active_) {
+  if (!enforce_cbf) {
     result.solver_status = 0;
     return result;
   }
@@ -529,6 +592,12 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
 
   // h_dot + alpha*h >= 0  ->  a*u >= -alpha*h - b.
   const double cbf_lower_bound = -alpha_ * h - b;
+  if (!a.allFinite() || !std::isfinite(cbf_lower_bound) ||
+      !std::isfinite(h) || !std::isfinite(directional_energy)) {
+    ROS_ERROR_THROTTLE(1.0, "Directional CBF: non-finite barrier coefficients");
+    result.solver_status = 3;
+    return result;
+  }
 
   for (int joint = 0; joint < 7; ++joint) {
     constraint_matrix_.coeffRef(0, joint) = a(joint);
@@ -537,19 +606,6 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
 
   lower_bounds_(0) = cbf_lower_bound;
   upper_bounds_(0) = kInfinity_;
-
-  // The QP variable u is bias-free, but Franka torque/rate constraints apply
-  // to the physical commanded torque tau = u + u_bias. Shift each physical
-  // bound by -u_bias so the optimization variable remains the same u used in
-  // the CBF derivation.
-  for (int joint = 0; joint < 7; ++joint) {
-    lower_bounds_(joint + 1) =
-        std::max(-tau_max_(joint) - u_bias(joint),
-                 tau_J_d(joint) - delta_tau_max_ - u_bias(joint));
-    upper_bounds_(joint + 1) =
-        std::min(tau_max_(joint) - u_bias(joint),
-                 tau_J_d(joint) + delta_tau_max_ - u_bias(joint));
-  }
 
   const Vector7d objective_vector = -2.0 * u_nominal;
   const absl::Status matrix_status = qp_solver_.UpdateConstraintMatrix(constraint_matrix_);
@@ -561,22 +617,21 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
         1.0,
         "\n================ CBF ERROR ================\n"
         "Directional kinetic-energy CBF: failed to update OSQP data.\n"
-        "FALLBACK: sending the UNMODIFIED nominal control u_nominal (+ u_bias).\n"
+        "ABORT: nominal control will not be applied.\n"
         "===========================================");
     result.solver_status = 4;
     return result;
   }
 
   const osqp::OsqpExitCode exit_code = qp_solver_.Solve();
-  if (exit_code != osqp::OsqpExitCode::kOptimal &&
-      exit_code != osqp::OsqpExitCode::kOptimalInaccurate) {
+  if (exit_code != osqp::OsqpExitCode::kOptimal) {
     ROS_ERROR_STREAM_THROTTLE(
         1.0,
         "\n================ CBF QP INFEASIBLE / FAILED ================\n"
         "Directional kinetic-energy CBF: OSQP status: "
             << osqp::ToString(exit_code) << "\n"
-        "FALLBACK: sending the UNMODIFIED nominal control u_nominal (+ u_bias).\n"
-        "NO CBF SAFETY MODIFICATION IS APPLIED IN THIS CONTROL CYCLE.\n"
+        "ABORT: nominal control will not be applied.\n"
+        "TASK ABORTED; the node remains available for another experiment.\n"
         "============================================================");
     result.solver_status = 5;
     return result;
@@ -588,45 +643,70 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
         1.0,
         "\n================ CBF ERROR ================\n"
         "Directional kinetic-energy CBF: invalid OSQP solution.\n"
-        "FALLBACK: sending the UNMODIFIED nominal control u_nominal (+ u_bias).\n"
+        "ABORT: nominal control will not be applied.\n"
         "===========================================");
     result.solver_status = 5;
     return result;
   }
 
-  result.u_safe = solution;
-  result.solver_status =
-      exit_code == osqp::OsqpExitCode::kOptimal ? static_cast<uint8_t>(1)
-                                                 : static_cast<uint8_t>(2);
-
-  const double safe_constraint =
-      (a * result.u_safe)(0, 0) + b + alpha_ * h;
-  if (safe_constraint < -1.0e-5) {
+  const double safe_constraint = (a * solution)(0, 0) + b + alpha_ * h;
+  if (!DirectionalCbfTaskState::acceptsSolution(true, safe_constraint,
+                                               cbf_residual_tolerance_)) {
     ROS_ERROR_STREAM_THROTTLE(
-        1.0,
-        "Directional kinetic-energy CBF constraint violation after solve: "
-            << safe_constraint);
+        1.0, "Directional CBF residual rejected: " << safe_constraint
+             << ", tolerance=" << cbf_residual_tolerance_);
+    result.solver_status = 6;
+    return result;
   }
 
+  result.u_safe = solution;
+  result.solver_status = 1;
   return result;
 }
 
-CartesianImpedanceDirectionalKineticEnergyCBFController::Vector7d
-CartesianImpedanceDirectionalKineticEnergyCBFController::saturateTorqueRate(
-    const Vector7d& tau_d_calculated,
-    const Vector7d& tau_J_d) const {
-  Vector7d tau_d_saturated;
-  for (size_t joint = 0; joint < 7; ++joint) {
-    const double difference = tau_d_calculated(joint) - tau_J_d(joint);
-    tau_d_saturated(joint) =
-        tau_J_d(joint) + std::max(std::min(difference, delta_tau_max_), -delta_tau_max_);
+bool CartesianImpedanceDirectionalKineticEnergyCBFController::startExperimentCallback(
+    franka_msgs::StartDirectionalExperiment::Request& request,
+    franka_msgs::StartDirectionalExperiment::Response& response) {
+  const auto& p = request.target.position;
+  const auto& o = request.target.orientation;
+  Eigen::Quaterniond orientation(o.w, o.x, o.y, o.z);
+  const auto& minimum = compliance_paramConfig::__getMin__();
+  const auto& maximum = compliance_paramConfig::__getMax__();
+  if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z) ||
+      !orientation.coeffs().allFinite() || !std::isfinite(orientation.norm()) ||
+      orientation.norm() < 1.0e-12 || !std::isfinite(request.Kmax) ||
+      !std::isfinite(request.alpha) || request.Kmax < minimum.Kmax ||
+      request.Kmax > maximum.Kmax || request.alpha < minimum.alpha ||
+      request.alpha > maximum.alpha) {
+    response.success = false;
+    response.message = "Invalid target or CBF parameters outside dynamic-reconfigure limits";
+    return true;
   }
-  return tau_d_saturated;
+  orientation.normalize();
+  boost::recursive_mutex::scoped_lock dynamic_lock(dynamic_config_mutex_);
+  std::lock_guard<std::recursive_mutex> control_lock(control_mutex_);
+  auto config = current_config_;
+  config.cbf_active = request.cbf_active;
+  config.Kmax = request.Kmax;
+  config.alpha = request.alpha;
+  complianceParamCallback(config, 0);
+  dynamic_server_compliance_param_->updateConfig(config);
+  position_d_target_ << p.x, p.y, p.z;
+  orientation_d_target_ = orientation;
+  // After the first service command, poses and restarts are accepted together
+  // through this service. Stale queued topic messages cannot replace the goal.
+  experiment_service_mode_ = true;
+  task_state_.requestStart();
+  response.success = true;
+  response.message = "Experiment queued; inspect /cbf_info for execution status";
+  return true;
 }
 
 void CartesianImpedanceDirectionalKineticEnergyCBFController::complianceParamCallback(
     franka_example_controllers::compliance_paramConfig& config,
     uint32_t /*level*/) {
+  std::lock_guard<std::recursive_mutex> lock(control_mutex_);
+  current_config_ = config;
   cartesian_stiffness_target_.setIdentity();
   cartesian_stiffness_target_.topLeftCorner<3, 3>() =
       config.translational_stiffness * Eigen::Matrix3d::Identity();
@@ -652,6 +732,8 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::complianceParamCal
 
 void CartesianImpedanceDirectionalKineticEnergyCBFController::equilibriumPoseCallback(
     const geometry_msgs::PoseStampedConstPtr& msg) {
+  std::lock_guard<std::recursive_mutex> lock(control_mutex_);
+  if (task_state_.aborted() || experiment_service_mode_) return;
   std::lock_guard<std::mutex> position_d_target_mutex_lock(
       position_and_orientation_d_target_mutex_);
   position_d_target_ << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;

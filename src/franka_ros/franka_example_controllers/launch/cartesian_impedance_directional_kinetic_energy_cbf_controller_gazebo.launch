@@ -68,6 +68,9 @@
          type="double"
          value="$(arg derivative_filter_alpha)"/>
 
+  <!-- Simulation experiment: remove effort and velocity-triggered force clipping. -->
+  <param name="disable_gazebo_torque_limits" type="bool" value="true"/>
+
   <!-- Start Gazebo -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="paused" value="true"/>
@@ -162,6 +165,8 @@
 
   <param name="publish_rate"
          value="$(arg publish_rate)"/>
+    <param name="directional_experiment_service"
+           value="/cartesian_impedance_directional_kinetic_energy_cbf_controller/start_experiment"/>
 
   <param name="cbf_dynamic_reconfigure_service"
          value="/cartesian_impedance_directional_kinetic_energy_cbf_controller/dynamic_reconfigure_compliance_param_node/set_parameters"/>

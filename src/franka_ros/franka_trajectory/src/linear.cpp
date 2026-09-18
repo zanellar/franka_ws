@@ -9,6 +9,7 @@
 #include <ros/ros.h>
 
 #include <franka_trajectory/SetLinearCommand.h>
+#include <franka_msgs/StartDirectionalExperiment.h>
 
 class LinearTrajectory {
  public:
@@ -45,6 +46,13 @@ class LinearTrajectory {
     dynamic_reconfigure_client_ =
         root_node_handle_.serviceClient<dynamic_reconfigure::Reconfigure>(
             cbf_dynamic_reconfigure_service_);
+
+    private_node_handle_.param<std::string>("directional_experiment_service",
+                                           directional_experiment_service_, "");
+    if (!directional_experiment_service_.empty()) {
+      directional_experiment_client_ = root_node_handle_.serviceClient<
+          franka_msgs::StartDirectionalExperiment>(directional_experiment_service_);
+    }
 
     ROS_INFO_STREAM(
         "Linear trajectory ready. Command service: "
@@ -99,7 +107,34 @@ class LinearTrajectory {
       return true;
     }
 
-    // First update the controller parameters.
+    // The directional controller receives the target and parameters atomically.
+    // Its abort latch is cleared only by this explicit experiment request.
+    if (!directional_experiment_service_.empty()) {
+      franka_msgs::StartDirectionalExperiment command;
+      {
+        std::lock_guard<std::mutex> lock(target_mutex_);
+        command.request.target = target_pose_.pose;
+      }
+      command.request.target.position.x += request.x_move;
+      command.request.cbf_active = request.cbf_active;
+      command.request.Kmax = request.Kmax;
+      command.request.alpha = request.alpha;
+      if (!directional_experiment_client_.call(command)) {
+        response.success = false;
+        response.message = "Directional experiment service unavailable; target unchanged";
+        return true;
+      }
+      response.success = command.response.success;
+      response.message = command.response.message;
+      if (response.success) {
+        std::lock_guard<std::mutex> lock(target_mutex_);
+        target_pose_.pose = command.request.target;
+        response.applied_pose = target_pose_.pose;
+      }
+      return true;
+    }
+
+    // Legacy total-energy controller: update parameters through dynamic reconfigure.
     dynamic_reconfigure::Reconfigure reconfigure_request;
 
     dynamic_reconfigure::BoolParameter cbf_active_parameter;
@@ -160,6 +195,8 @@ class LinearTrajectory {
   ros::Publisher pose_publisher_;
   ros::ServiceServer command_service_;
   ros::ServiceClient dynamic_reconfigure_client_;
+  ros::ServiceClient directional_experiment_client_;
+  std::string directional_experiment_service_;
 
   std::mutex target_mutex_;
   geometry_msgs::PoseStamped target_pose_;

@@ -19,6 +19,7 @@
 #include <boost/algorithm/clamp.hpp>
 #include <boost/optional.hpp>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <string>
 
@@ -89,6 +90,9 @@ bool FrankaHWSim::initSim(const std::string& robot_namespace,
   model_nh.param<double>("tau_ext_lowpass_filter", this->tau_ext_lowpass_filter_,
                          kDefaultTauExtLowpassFilter);
 
+  bool disable_torque_limits = false;
+  model_nh.param("/disable_gazebo_torque_limits", disable_torque_limits, false);
+
   // Generate a list of franka_gazebo::Joint to store all relevant information
   for (const auto& transmission : transmissions) {
     if (transmission.type_ != "transmission_interface/SimpleTransmission") {
@@ -136,6 +140,15 @@ bool FrankaHWSim::initSim(const std::string& robot_namespace,
       return false;
     }
     joint->handle = handle;
+    if (disable_torque_limits && joint->name.rfind(arm_id_ + "_joint", 0) == 0) {
+      // Gazebo also suppresses accelerating effort at its velocity limit.
+      // Disable both force-truncation branches for this simulation experiment.
+      handle->SetEffortLimit(0, -1.0);
+      handle->SetVelocityLimit(0, -1.0);
+      joint->limits.has_effort_limits = false;
+      joint->limits.max_effort = std::numeric_limits<double>::infinity();
+      ROS_INFO_STREAM_NAMED("franka_hw_sim", "Force truncation disabled for " << joint->name);
+    }
     // set the control method for finger joints to effort
     if (joint->name.find(arm_id_ + "_finger_joint") != std::string::npos) {
       joint->control_method = EFFORT;

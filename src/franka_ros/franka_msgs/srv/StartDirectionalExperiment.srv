@@ -1,0 +1,8 @@
+# Target is expressed in the robot base frame.
+geometry_msgs/Pose target
+bool cbf_active
+float64 Kmax
+float64 alpha
+---
+bool success
+string message

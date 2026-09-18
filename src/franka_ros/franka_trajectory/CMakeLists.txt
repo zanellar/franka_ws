@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
+  franka_msgs
   geometry_msgs
   message_generation
   roscpp
@@ -32,6 +33,7 @@ list_insert_in_workspace_order(catkin_INCLUDE_DIRS ${Franka_INCLUDE_DIRS} ${catk
 catkin_package(
   CATKIN_DEPENDS
     dynamic_reconfigure
+    franka_msgs
     geometry_msgs
     message_runtime
     roscpp

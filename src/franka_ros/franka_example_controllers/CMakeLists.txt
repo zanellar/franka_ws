@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   eigen_conversions
   franka_hw
   franka_gripper
+  franka_msgs
   geometry_msgs
   hardware_interface
   joint_limits_interface
@@ -55,6 +56,7 @@ catkin_package(
     eigen_conversions
     franka_hw
     franka_gripper
+    franka_msgs
     geometry_msgs
     hardware_interface
     joint_limits_interface
@@ -183,3 +185,10 @@ catkin_install_python(
     scripts/interactive_marker.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+
+if(CATKIN_ENABLE_TESTING)
+  add_executable(directional_cbf_task_state_test test/directional_cbf_task_state_test.cpp)
+  target_include_directories(directional_cbf_task_state_test PRIVATE include)
+  add_test(NAME directional_cbf_task_state_test COMMAND directional_cbf_task_state_test)
+endif()

@@ -33,7 +33,7 @@
       <child link="${arm_id}_link1" />
       <axis xyz="0 0 1" />
       <xacro:franka-limits name="joint1" config="${joint_limits}" />
-      <dynamics D="1" K="7000" damping="0.003" friction="0.0" mu_coulomb="0" mu_viscous="16" />
+      <dynamics D="1" K="7000" damping="0.0" friction="0.0" mu_coulomb="0" mu_viscous="16" />
     </joint>
 
     <xacro:link_with_sc name="link2" gazebo="${gazebo}">
@@ -48,7 +48,7 @@
       <child link="${arm_id}_link2" />
       <axis xyz="0 0 1" />
       <xacro:franka-limits name="joint2" config="${joint_limits}" />
-      <dynamics D="1" K="7000" damping="0.003" friction="0.0" mu_coulomb="0" mu_viscous="16" />
+      <dynamics D="1" K="7000" damping="0.0" friction="0.0" mu_coulomb="0" mu_viscous="16" />
     </joint>
 
     <xacro:link_with_sc name="link3" gazebo="${gazebo}">
@@ -63,7 +63,7 @@
       <child link="${arm_id}_link3" />
       <axis xyz="0 0 1" />
       <xacro:franka-limits name="joint3" config="${joint_limits}" />
-      <dynamics D="1" K="7000" damping="0.003" friction="0.0" mu_coulomb="0" mu_viscous="16" />
+      <dynamics D="1" K="7000" damping="0.0" friction="0.0" mu_coulomb="0" mu_viscous="16" />
     </joint>
 
     <xacro:link_with_sc name="link4" gazebo="${gazebo}">
@@ -78,7 +78,7 @@
       <child link="${arm_id}_link4" />
       <axis xyz="0 0 1" />
       <xacro:franka-limits name="joint4" config="${joint_limits}" />
-      <dynamics D="1" K="7000" damping="0.003" friction="0.0" mu_coulomb="0" mu_viscous="16" />
+      <dynamics D="1" K="7000" damping="0.0" friction="0.0" mu_coulomb="0" mu_viscous="16" />
     </joint>
 
     <xacro:link_with_sc name="link5" gazebo="${gazebo}">
@@ -94,7 +94,7 @@
       <child link="${arm_id}_link5" />
       <axis xyz="0 0 1" />
       <xacro:franka-limits name="joint5" config="${joint_limits}" />
-      <dynamics D="1" K="7000" damping="0.003" friction="0.0" mu_coulomb="0" mu_viscous="16" />
+      <dynamics D="1" K="7000" damping="0.0" friction="0.0" mu_coulomb="0" mu_viscous="16" />
     </joint>
 
     <xacro:link_with_sc name="link6" gazebo="${gazebo}">
@@ -109,7 +109,7 @@
       <child link="${arm_id}_link6" />
       <axis xyz="0 0 1" />
       <xacro:franka-limits name="joint6" config="${joint_limits}" />
-      <dynamics D="1" K="7000" damping="0.003" friction="0.0" mu_coulomb="0" mu_viscous="16" />
+      <dynamics D="1" K="7000" damping="0.0" friction="0.0" mu_coulomb="0" mu_viscous="16" />
     </joint>
 
     <xacro:link_with_sc name="link7" gazebo="${gazebo}" rpy="0 0 ${pi/4}">
@@ -125,7 +125,7 @@
       <child link="${arm_id}_link7"/>
       <axis xyz="0 0 1"/>
       <xacro:franka-limits name="joint7" config="${joint_limits}" />
-      <dynamics D="1" K="7000" damping="0.003" friction="0.0" mu_coulomb="0" mu_viscous="16"/>
+      <dynamics D="1" K="7000" damping="0.0" friction="0.0" mu_coulomb="0" mu_viscous="16"/>
     </joint>
 
     <link name="${arm_id}_link8"/>
