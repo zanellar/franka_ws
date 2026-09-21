@@ -81,15 +81,16 @@ direction_y:=0.0 \
 direction_z:=0.0 \
 headless:=false \
 rviz:=false
+log_dir:="/home/patrickkoehorst24/Riccardo/franka_ws_013/data"
 
 ------------------------------------------
 
 Terminal 2:  
-
+             
 source ~/Riccardo/franka_ws_013/env.sh
 
 rqt_plot /cbf_info/kinetic_energy /cbf_info/directional_kinetic_energy /cbf_info/Kmax 
-
+                                                                          
 
 ------------------------------------------
 
@@ -101,7 +102,7 @@ rosservice call \
   /trajectory_publisher/set_experiment_command \
   "x_move: 0.20
 cbf_active: false
-Kmax: 0.09
+Kmax: 0.05
 alpha: 1.0"
 
 rosservice call \

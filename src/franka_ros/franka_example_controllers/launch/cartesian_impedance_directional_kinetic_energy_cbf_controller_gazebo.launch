@@ -6,12 +6,20 @@
   <arg name="arm_id" default="$(arg robot)"/>
   <arg name="use_gripper" default="false"/>
 
-  <!-- CSV logger runs in its own process. Override log_dir with a workspace path. -->
+  <!-- Subscribers are armed at launch; files open on the first experiment request. -->
   <arg name="record_cbf" default="true"/>
+  <arg name="state_publish_rate" default="1000"/>
+  <arg name="gazebo_world" default="default"/>
+  <node pkg="franka_gazebo" type="contact_diagnostics_bridge"
+        name="contact_diagnostics_bridge" output="screen" if="$(arg record_cbf)">
+    <param name="world" value="$(arg gazebo_world)"/>
+  </node>
   <arg name="log_dir" default="$(env HOME)/.ros/directional_cbf"/>
   <node pkg="franka_example_controllers" type="record_directional_cbf.py"
         name="directional_cbf_recorder" output="screen" if="$(arg record_cbf)">
     <param name="output_dir" value="$(arg log_dir)"/>
+    <param name="arm_id" value="$(arg arm_id)"/>
+    <param name="gazebo_world" value="$(arg gazebo_world)"/>
   </node>
 
   <!-- Gazebo -->
@@ -112,6 +120,9 @@
       file="$(find franka_example_controllers)/config/franka_example_controllers.yaml"
       subst_value="true"/>
 
+  <!-- Override YAML only for this experiment, after all controller configs. -->
+  <param name="franka_state_controller/publish_rate" value="$(arg state_publish_rate)"/>
+
   <!-- Spawn robot in bent non-singular configuration -->
   <arg name="unpause"
        value="$(eval '' if arg('paused') else '-unpause')"/>
@@ -173,6 +184,9 @@
 
   <param name="publish_rate"
          value="$(arg publish_rate)"/>
+    <param name="recording_start_service" value="/directional_cbf_recorder/start"
+           if="$(arg record_cbf)"/>
+    <param name="recording_start_service" value="" unless="$(arg record_cbf)"/>
     <param name="directional_experiment_service"
            value="/cartesian_impedance_directional_kinetic_energy_cbf_controller/start_experiment"/>
 

@@ -17,6 +17,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Load catkin and all dependencies required for this package.
 find_package(catkin REQUIRED COMPONENTS
   gazebo_dev
+  gazebo_msgs
   roscpp
   std_msgs
   gazebo_ros_control
@@ -66,6 +67,7 @@ list_insert_in_workspace_order(
 catkin_package(
   CATKIN_DEPENDS
     roscpp
+    gazebo_msgs
     std_msgs
     gazebo_ros_control
     kdl_parser
@@ -141,6 +143,13 @@ add_dependencies(franka_hw_sim
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )
+
+# Gazebo Classic transport -> ROS contact diagnostics (no model modification).
+add_executable(contact_diagnostics_bridge src/contact_diagnostics_bridge.cpp)
+add_dependencies(contact_diagnostics_bridge ${catkin_EXPORTED_TARGETS})
+target_link_libraries(contact_diagnostics_bridge ${catkin_LIBRARIES} sdformat9::sdformat9)
+install(TARGETS contact_diagnostics_bridge
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 if(CATKIN_ENABLE_TESTING)
   add_subdirectory(test)

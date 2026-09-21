@@ -341,6 +341,15 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
     }
   }
 
+  // Snapshot diagnostics before updating the filtered reference below.
+  Eigen::Vector3d target_position_sample;
+  {
+    std::lock_guard<std::mutex> lock(position_and_orientation_d_target_mutex_);
+    target_position_sample = position_d_target_;
+  }
+  const double ee_target_distance = (position - target_position_sample).norm();
+  const double ee_reference_distance = (position - position_d_).norm();
+
   Eigen::Matrix<double, 6, 1> error;
   error.head<3>() = position - position_d_;
 
@@ -473,6 +482,20 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
       const Eigen::JacobiSVD<Matrix6x7d> svd(jacobian);
       for (int i = 0; i < 6; ++i) diagnostic.svd_jacobian[i] = svd.singularValues()(i);
     }
+    diagnostic.kinetic_energy_total = kinetic_energy;
+    for (int i = 0; i < 3; ++i) {
+      diagnostic.ee_position[i] = position(i);
+      diagnostic.target_position[i] = target_position_sample(i);
+    }
+    diagnostic.ee_target_distance = ee_target_distance;
+    diagnostic.ee_reference_distance = ee_reference_distance;
+    const double unavailable = std::numeric_limits<double>::quiet_NaN();
+    for (int i = 0; i < 7; ++i) {
+      diagnostic.q[i] = cbf_active_ ? q(i) : unavailable;
+      diagnostic.dq[i] = cbf_active_ ? dq(i) : unavailable;
+      diagnostic.tau_command[i] = cbf_active_ ? tau_command(i) : unavailable;
+    }
+    diagnostic.robot_mode = cbf_active_ ? static_cast<uint8_t>(robot_state.robot_mode) : 0;
     diagnostic.cbf_active = cbf_active_;
     diagnostic.task_aborted = task_state_.aborted();
     diagnostic.cbf_solution_applied = !task_state_.aborted() && cbf_result.solver_status == 1;

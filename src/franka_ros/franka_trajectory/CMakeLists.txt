@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   message_generation
   roscpp
+  std_srvs
 )
 
 add_service_files(
@@ -37,6 +38,7 @@ catkin_package(
     geometry_msgs
     message_runtime
     roscpp
+    std_srvs
 )
 
 set(EXECUTABLES circular chirp square_wave hold tension linear)

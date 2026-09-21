@@ -7,6 +7,7 @@
 #include <dynamic_reconfigure/Reconfigure.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <ros/ros.h>
+#include <std_srvs/Trigger.h>
 
 #include <franka_trajectory/SetLinearCommand.h>
 #include <franka_msgs/StartDirectionalExperiment.h>
@@ -52,6 +53,13 @@ class LinearTrajectory {
     if (!directional_experiment_service_.empty()) {
       directional_experiment_client_ = root_node_handle_.serviceClient<
           franka_msgs::StartDirectionalExperiment>(directional_experiment_service_);
+    }
+
+    private_node_handle_.param<std::string>("recording_start_service",
+                                           recording_start_service_, "");
+    if (!recording_start_service_.empty()) {
+      recording_client_ = root_node_handle_.serviceClient<std_srvs::Trigger>(
+          recording_start_service_);
     }
 
     ROS_INFO_STREAM(
@@ -105,6 +113,19 @@ class LinearTrajectory {
       response.success = false;
       response.message = "alpha must be strictly positive.";
       return true;
+    }
+
+    // The recorder is already subscribed. Wait for its synchronous ACK before
+    // forwarding any motion; subsequent calls reuse the same recording session.
+    if (!recording_start_service_.empty()) {
+      std_srvs::Trigger recording;
+      if (!recording_client_.call(recording) || !recording.response.success) {
+        response.success = false;
+        response.message = "Experiment not sent: recorder unavailable or not ready. " +
+                           recording.response.message;
+        ROS_ERROR_STREAM(response.message);
+        return true;
+      }
     }
 
     // The directional controller receives the target and parameters atomically.
@@ -196,6 +217,8 @@ class LinearTrajectory {
   ros::ServiceServer command_service_;
   ros::ServiceClient dynamic_reconfigure_client_;
   ros::ServiceClient directional_experiment_client_;
+  ros::ServiceClient recording_client_;
+  std::string recording_start_service_;
   std::string directional_experiment_service_;
 
   std::mutex target_mutex_;
