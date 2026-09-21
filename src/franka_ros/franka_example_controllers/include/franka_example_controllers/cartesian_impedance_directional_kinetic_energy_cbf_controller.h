@@ -26,6 +26,8 @@
 #include <franka_hw/franka_model_interface.h>
 #include <franka_hw/franka_state_interface.h>
 #include <franka_msgs/Cbf.h>
+#include <franka_msgs/DirectionalCbfDiagnostics.h>
+#include <realtime_tools/realtime_publisher.h>
 #include <franka_msgs/StartDirectionalExperiment.h>
 #include <franka_example_controllers/directional_cbf_task_state.h>
 
@@ -57,6 +59,10 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
     double h{std::numeric_limits<double>::quiet_NaN()};
     double directional_kinetic_energy{std::numeric_limits<double>::quiet_NaN()};
     uint8_t solver_status{0};
+    RowVector7d barrier_a{RowVector7d::Zero()};
+    double barrier_b{std::numeric_limits<double>::quiet_NaN()};
+    double constraint_qp{std::numeric_limits<double>::quiet_NaN()};
+    bool barrier_model_valid{false};
   };
 
   bool readParameters(ros::NodeHandle& node_handle);
@@ -117,6 +123,11 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   ros::Subscriber sub_equilibrium_pose_;
   ros::Publisher cbf_publisher_;
   franka_msgs::Cbf cbf_info_;
+  std::unique_ptr<realtime_tools::RealtimePublisher<franka_msgs::DirectionalCbfDiagnostics>>
+      diagnostics_publisher_;
+  uint64_t diagnostic_sample_index_{0};
+  uint64_t experiment_id_{0};
+  std::string base_frame_;
 
   double Kmax_{1.5};
   double alpha_{1.0};

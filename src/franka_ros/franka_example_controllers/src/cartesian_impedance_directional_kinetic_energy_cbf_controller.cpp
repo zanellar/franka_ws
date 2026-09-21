@@ -161,6 +161,10 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::init(
     return false;
   }
 
+  base_frame_ = arm_id + "_link0";
+  diagnostics_publisher_ = std::make_unique<realtime_tools::RealtimePublisher<
+      franka_msgs::DirectionalCbfDiagnostics>>(node_handle, "/directional_cbf/diagnostics", 1000);
+
   if (!readParameters(node_handle)) {
     return false;
   }
@@ -322,6 +326,7 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   Eigen::Quaterniond orientation(transform.rotation());
 
   if (task_state_.consumeStartRequest()) {
+    ++experiment_id_;
     // Restart from the measured pose; keep the new requested target.
     position_d_ = position;
     orientation_d_ = orientation;
@@ -439,6 +444,41 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   cbf_info_.solver_status = task_state_.aborted() ? task_state_.error() : cbf_result.solver_status;
   cbf_info_.header.stamp = time;
   cbf_publisher_.publish(cbf_info_);
+
+  // No file I/O here. sample_index exposes missed trylocks/transport samples.
+  const uint64_t sample_index = diagnostic_sample_index_++;
+  if (diagnostics_publisher_->trylock()) {
+    auto& diagnostic = diagnostics_publisher_->msg_;
+    diagnostic.header.stamp = time;
+    diagnostic.header.frame_id = base_frame_;
+    diagnostic.sample_index = sample_index;
+    diagnostic.experiment_id = experiment_id_;
+    diagnostic.dt = period.toSec();
+    diagnostic.cbf_h = cbf_result.h;
+    diagnostic.kinetic_energy_dir = cbf_result.directional_kinetic_energy;
+    diagnostic.cbf_constraint_safe = std::numeric_limits<double>::quiet_NaN();
+    if (cbf_result.barrier_model_valid && tau_command.allFinite() && coriolis.allFinite()) {
+      diagnostic.cbf_constraint_safe =
+          (cbf_result.barrier_a * (tau_command - coriolis))(0, 0) +
+          cbf_result.barrier_b + alpha_ * cbf_result.h;
+    }
+    diagnostic.cbf_constraint_qp = cbf_result.constraint_qp;
+    diagnostic.Kmax = Kmax_;
+    diagnostic.alpha = alpha_;
+    diagnostic.cbf_residual_tolerance = cbf_residual_tolerance_;
+    for (int i = 0; i < 3; ++i) diagnostic.direction[i] = direction_(i);
+    for (int i = 0; i < 6; ++i)
+      diagnostic.svd_jacobian[i] = std::numeric_limits<double>::quiet_NaN();
+    if (jacobian.allFinite()) {
+      const Eigen::JacobiSVD<Matrix6x7d> svd(jacobian);
+      for (int i = 0; i < 6; ++i) diagnostic.svd_jacobian[i] = svd.singularValues()(i);
+    }
+    diagnostic.cbf_active = cbf_active_;
+    diagnostic.task_aborted = task_state_.aborted();
+    diagnostic.cbf_solution_applied = !task_state_.aborted() && cbf_result.solver_status == 1;
+    diagnostic.solver_status = cbf_info_.solver_status;
+    diagnostics_publisher_->unlockAndPublish();
+  }
 }
 
 CartesianImpedanceDirectionalKineticEnergyCBFController::CbfResult
@@ -569,13 +609,6 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
   result.h = h;
   result.directional_kinetic_energy = directional_energy;
 
-  // If the CBF is disabled, keep calculating/publishing the energy diagnostics
-  // and derivative history, but do not modify u_nominal and do not solve the QP.
-  if (!enforce_cbf) {
-    result.solver_status = 0;
-    return result;
-  }
-
   // -------------------------------------------------------------------------
   // CBF derivative in the compensated coordinates used by the notes:
   //
@@ -589,6 +622,16 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
   const double b =
       -directional_velocity * lambda_dir * (directional_jacobian_dot * dq)(0, 0) -
       0.5 * directional_velocity * lambda_dir_dot * directional_velocity;
+
+  result.barrier_a = a;
+  result.barrier_b = b;
+  result.barrier_model_valid = a.allFinite() && std::isfinite(b) && std::isfinite(h);
+
+  // Diagnostics also describe nominal and abort commands. Enforcement is unchanged.
+  if (!enforce_cbf) {
+    result.solver_status = 0;
+    return result;
+  }
 
   // h_dot + alpha*h >= 0  ->  a*u >= -alpha*h - b.
   const double cbf_lower_bound = -alpha_ * h - b;
@@ -650,6 +693,7 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
   }
 
   const double safe_constraint = (a * solution)(0, 0) + b + alpha_ * h;
+  result.constraint_qp = safe_constraint;
   if (!DirectionalCbfTaskState::acceptsSolution(true, safe_constraint,
                                                cbf_residual_tolerance_)) {
     ROS_ERROR_STREAM_THROTTLE(

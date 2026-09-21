@@ -3,7 +3,7 @@ project(franka_msgs)
 
 find_package(catkin REQUIRED COMPONENTS message_generation geometry_msgs std_msgs sensor_msgs actionlib_msgs)
 
-add_message_files(FILES Errors.msg FrankaState.msg Cbf.msg)
+add_message_files(FILES Errors.msg FrankaState.msg Cbf.msg DirectionalCbfDiagnostics.msg)
 
 add_service_files(FILES
   SetCartesianImpedance.srv

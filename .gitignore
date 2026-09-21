@@ -7,3 +7,5 @@
 .ros/
 log/
 logs/
+
+/data/*

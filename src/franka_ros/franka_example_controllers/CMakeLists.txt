@@ -183,6 +183,8 @@ endif()
 catkin_install_python(
   PROGRAMS
     scripts/interactive_marker.py
+    scripts/record_directional_cbf.py
+    scripts/plot_directional_cbf.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

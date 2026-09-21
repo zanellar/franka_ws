@@ -1,0 +1,629 @@
+diff --git a/DIRECTIONAL_CBF_LOGGING.md b/DIRECTIONAL_CBF_LOGGING.md
+new file mode 100644
+index 0000000..7d4f90d
+--- /dev/null
++++ b/DIRECTIONAL_CBF_LOGGING.md
+@@ -0,0 +1,152 @@
++# Directional CBF data recording and plotting
++
++Base: branch franka_ws_013_gazebo, commit e321d9f185252c774786fe892af35134f26fd178.
++Apply this patch after the five controller/Gazebo fixes already on this branch.
++The local workspace can be named franka_ws_013; patch paths are relative to its root.
++
++## Apply and rebuild the install space
++
++Place directional_cbf_logging.patch in the root of franka_ws_013 and run:
++
++```bash
++git apply --check directional_cbf_logging.patch
++git apply directional_cbf_logging.patch
++
++export CC=/usr/bin/gcc-10
++export CXX=/usr/bin/g++-10
++export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
++catkin_make install \
++  -DCMAKE_C_COMPILER=/usr/bin/gcc-10 \
++  -DCMAKE_CXX_COMPILER=/usr/bin/g++-10 \
++  -DCMAKE_CXX_STANDARD=17 \
++  -DCMAKE_CXX_STANDARD_REQUIRED=ON \
++  -DCMAKE_CXX_EXTENSIONS=OFF \
++  -DABSL_PROPAGATE_CXX_STD=ON \
++  -DABSL_BUILD_TESTING=OFF \
++  -DOSQP-CPP_BUILD_TESTS=OFF \
++  -DCMAKE_PREFIX_PATH="$FRANKA_013_PREFIX;/opt/ros/noetic" \
++  -DCMAKE_BUILD_TYPE=Release \
++  -DCATKIN_ENABLE_TESTING=OFF
++cp -a devel/lib/libabsl*.so* install/lib/
++source install/setup.bash
++```
++
++This builds the new franka_msgs/DirectionalCbfDiagnostics message and installs
++both Python scripts. The existing Cbf message is unchanged. Restart Gazebo and
++the controller after rebuilding. Plotting needs Python 3, NumPy and Matplotlib;
++recording needs the sourced ROS Noetic environment and rospy, but not Matplotlib.
++
++## Record
++
++Run from the actual franka_ws_013 root. Using pwd avoids assuming its parent directory:
++
++```bash
++roslaunch franka_example_controllers \
++  cartesian_impedance_directional_kinetic_energy_cbf_controller_gazebo.launch \
++  start_trajectory:=true trajectory:=linear \
++  cbf_active:=true Kmax:=0.1 alpha:=5.0 \
++  record_cbf:=true log_dir:="$(pwd)/data/cbf"
++```
++
++The recorder prints the exact output filename, for example:
++
++```
++franka_ws_013/data/cbf/directional_cbf_20260918T120000_000000Z_a1b2c3d4.csv
++```
++
++A new unique CSV is created per recorder session; files are never overwritten.
++Recording starts with incoming diagnostics and continues through CBF bypass,
++errors and retries. The same CSV contains all attempts. experiment_id starts
++at 0 and increments when the controller consumes an explicit experiment start.
++The public set_experiment_command service works as before.
++
++Stop normally with Ctrl+C to flush and close the file. Buffers are also flushed
++once per wall-clock second; process kill or a machine failure can lose buffered
++rows. A header-only CSV means no diagnostic message was received.
++
++Without an explicit log_dir, the default is ~/.ros/directional_cbf.
++Use record_cbf:=false to disable the automatic recorder. A separate recorder can
++also be started manually (avoid doing both unless you want two CSV copies):
++
++```bash
++rosrun franka_example_controllers record_directional_cbf.py _output_dir:="$(pwd)/data/cbf"
++```
++
++## Plot
++
++The plotter is installed in the package and also provided as a standalone file.
++It can run without ROS once NumPy and Matplotlib are installed.
++
++```bash
++rosrun franka_example_controllers plot_directional_cbf.py data/cbf/FILE.csv
++```
++
++Or with the separately downloaded script:
++
++```bash
++python3 plot_directional_cbf.py data/cbf/FILE.csv --show
++python3 plot_directional_cbf.py data/cbf/FILE.csv --experiment 2 --output data/cbf/experiment_2.pdf
++```
++
++Default output is a four-panel PNG beside the CSV. --output also supports PDF
++and SVG. No interactive window is required unless --show is requested. Clock
++rewinds/controller restarts create a new time_segment; use --segment 1 to select
++one, otherwise segments are shown on their own relative time axes in the same
++figure. Attempts and missing-sample gaps are not joined by plot lines.
++
++## Meaning of the quantities
++
++| CSV field | Meaning |
++| --- | --- |
++| cbf_h | Kmax - K_dir, in J |
++| cbf_constraint_safe | Model residual a*(tau_command-coriolis)+b+alpha*h, in J/s |
++| kinetic_energy_dir | 0.5*Lambda_dir*(J_dir*dq)^2, in J |
++| svd_jacobian_1 ... svd_jacobian_6 | Six singular values, descending, of the full 6x7 geometric Jacobian expressed in the base frame |
++
++The six singular values include both translational and rotational Jacobian rows;
++they are not the SVD of the 1x7 directional Jacobian. Translational and angular
++rows have different physical units, so this is a diagnostic of the chosen full
++Jacobian, not a unit-invariant singularity metric. Values near zero identify loss
++of rank in that representation.
++
++cbf_constraint_safe is computed on the command actually sent by this controller.
++For an accepted CBF solution it equals the Python expression a*usafe+b+alpha*h.
++During bypass it describes the nominal command. During an abort it describes
++the braking command, using u=tau_command-coriolis consistently with the compensated
++model. The word safe is a field name, not a guarantee that this value is positive.
++The plot marks aborted samples red and CBF-disabled samples gray.
++
++cbf_constraint_qp separately records the finite optimal QP candidate residual,
++including a candidate subsequently rejected by the residual check. It is NaN
++when no such candidate exists. This lets you distinguish the rejected candidate
++from the braking command actually applied. No previous candidate is carried over.
++
++Additional columns retain Kmax, alpha, residual tolerance, direction, actual
++control period dt, cbf_active, task_aborted, cbf_solution_applied and solver_status.
++The energy panel includes Kmax; h and the residual have zero reference lines.
++The residual panel also shows the negative acceptance tolerance.
++
++All four requested quantities are from the same controller state. stamp_ns is
++the exact integer ROS timestamp, time_s is relative simulation time in the
++segment, and sample_index is the controller's own counter (not ROS header.seq).
++Unavailable quantities are NaN rather than misleading zeros. The residual uses
++the analytical model and numerical Jdot/Mdot estimates; it is not a measured
++finite difference of h or a verification of the Gazebo-applied actuator force.
++
++## Collection and validation limits
++
++A realtime publisher transfers diagnostics to /directional_cbf/diagnostics.
++SVD calculation is only performed after a successful publisher trylock. Disk I/O
++runs in a separate Python process with a bounded queue. Both the publisher and
++ROS transport can drop samples: missing_samples_before records counter gaps
++between received samples, and the recorder warns about gaps/queue overflows.
++Gaps before the first received sample or after the last cannot be inferred.
++The stream attempts one diagnostic message per controller update; it is not a
++guaranteed lossless capture. The added SVD has a computation cost that should be
++measured in the actual simulation.
++
++Validated while preparing this patch: exact patch application on the stated
++commit, XML parsing, Python syntax, CSV column mapping, integer timestamps,
++clock resets, sample gaps, missing values, shutdown queue draining and PNG/PDF
++plot generation using synthetic data. Full ROS compilation, realtime transport
++and Gazebo execution were not available and remain to be tested locally.
+diff --git a/src/franka_ros/franka_example_controllers/CMakeLists.txt b/src/franka_ros/franka_example_controllers/CMakeLists.txt
+index 7b5ed4f..0b59ba3 100644
+--- a/src/franka_ros/franka_example_controllers/CMakeLists.txt
++++ b/src/franka_ros/franka_example_controllers/CMakeLists.txt
+@@ -183,6 +183,8 @@ endif()
+ catkin_install_python(
+   PROGRAMS
+     scripts/interactive_marker.py
++    scripts/record_directional_cbf.py
++    scripts/plot_directional_cbf.py
+   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+ )
+ 
+diff --git a/src/franka_ros/franka_example_controllers/include/franka_example_controllers/cartesian_impedance_directional_kinetic_energy_cbf_controller.h b/src/franka_ros/franka_example_controllers/include/franka_example_controllers/cartesian_impedance_directional_kinetic_energy_cbf_controller.h
+index 2a32c6f..96e73c2 100644
+--- a/src/franka_ros/franka_example_controllers/include/franka_example_controllers/cartesian_impedance_directional_kinetic_energy_cbf_controller.h
++++ b/src/franka_ros/franka_example_controllers/include/franka_example_controllers/cartesian_impedance_directional_kinetic_energy_cbf_controller.h
+@@ -26,6 +26,8 @@
+ #include <franka_hw/franka_model_interface.h>
+ #include <franka_hw/franka_state_interface.h>
+ #include <franka_msgs/Cbf.h>
++#include <franka_msgs/DirectionalCbfDiagnostics.h>
++#include <realtime_tools/realtime_publisher.h>
+ #include <franka_msgs/StartDirectionalExperiment.h>
+ #include <franka_example_controllers/directional_cbf_task_state.h>
+ 
+@@ -57,6 +59,10 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
+     double h{std::numeric_limits<double>::quiet_NaN()};
+     double directional_kinetic_energy{std::numeric_limits<double>::quiet_NaN()};
+     uint8_t solver_status{0};
++    RowVector7d barrier_a{RowVector7d::Zero()};
++    double barrier_b{std::numeric_limits<double>::quiet_NaN()};
++    double constraint_qp{std::numeric_limits<double>::quiet_NaN()};
++    bool barrier_model_valid{false};
+   };
+ 
+   bool readParameters(ros::NodeHandle& node_handle);
+@@ -117,6 +123,11 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
+   ros::Subscriber sub_equilibrium_pose_;
+   ros::Publisher cbf_publisher_;
+   franka_msgs::Cbf cbf_info_;
++  std::unique_ptr<realtime_tools::RealtimePublisher<franka_msgs::DirectionalCbfDiagnostics>>
++      diagnostics_publisher_;
++  uint64_t diagnostic_sample_index_{0};
++  uint64_t experiment_id_{0};
++  std::string base_frame_;
+ 
+   double Kmax_{1.5};
+   double alpha_{1.0};
+diff --git a/src/franka_ros/franka_example_controllers/launch/cartesian_impedance_directional_kinetic_energy_cbf_controller_gazebo.launch b/src/franka_ros/franka_example_controllers/launch/cartesian_impedance_directional_kinetic_energy_cbf_controller_gazebo.launch
+index c0fa42f..04977e9 100644
+--- a/src/franka_ros/franka_example_controllers/launch/cartesian_impedance_directional_kinetic_energy_cbf_controller_gazebo.launch
++++ b/src/franka_ros/franka_example_controllers/launch/cartesian_impedance_directional_kinetic_energy_cbf_controller_gazebo.launch
+@@ -6,6 +6,14 @@
+   <arg name="arm_id" default="$(arg robot)"/>
+   <arg name="use_gripper" default="false"/>
+ 
++  <!-- CSV logger runs in its own process. Override log_dir with a workspace path. -->
++  <arg name="record_cbf" default="true"/>
++  <arg name="log_dir" default="$(env HOME)/.ros/directional_cbf"/>
++  <node pkg="franka_example_controllers" type="record_directional_cbf.py"
++        name="directional_cbf_recorder" output="screen" if="$(arg record_cbf)">
++    <param name="output_dir" value="$(arg log_dir)"/>
++  </node>
++
+   <!-- Gazebo -->
+   <arg name="headless" default="false"/>
+   <arg name="paused" default="false"/>
+diff --git a/src/franka_ros/franka_example_controllers/package.xml b/src/franka_ros/franka_example_controllers/package.xml
+index 707a6cf..0ff38ca 100644
+--- a/src/franka_ros/franka_example_controllers/package.xml
++++ b/src/franka_ros/franka_example_controllers/package.xml
+@@ -41,6 +41,8 @@
+   <exec_depend>franka_description</exec_depend>
+   <exec_depend>message_runtime</exec_depend>
+   <exec_depend>rospy</exec_depend>
++  <exec_depend>python3-numpy</exec_depend>
++  <exec_depend>python3-matplotlib</exec_depend>
+ 
+   <export>
+     <controller_interface plugin="${prefix}/franka_example_controllers_plugin.xml" />
+diff --git a/src/franka_ros/franka_example_controllers/scripts/plot_directional_cbf.py b/src/franka_ros/franka_example_controllers/scripts/plot_directional_cbf.py
+new file mode 100755
+index 0000000..818e0f8
+--- /dev/null
++++ b/src/franka_ros/franka_example_controllers/scripts/plot_directional_cbf.py
+@@ -0,0 +1,118 @@
++#!/usr/bin/env python3
++"""Plot a recorded directional CBF CSV without ROS or pandas."""
++import argparse
++import csv
++from pathlib import Path
++import sys
++
++import numpy as np
++
++
++def load_csv(path):
++    with Path(path).open(newline='') as stream:
++        reader = csv.DictReader(stream)
++        required = ['time_s', 'time_segment', 'experiment_id', 'sample_index', 'cbf_h',
++                    'cbf_constraint_safe', 'kinetic_energy_dir', 'Kmax',
++                    'task_aborted', 'cbf_active', 'cbf_solution_applied',
++                    'missing_samples_before', 'cbf_residual_tolerance'] + [
++                        'svd_jacobian_{}'.format(i) for i in range(1, 7)]
++        absent = set(required) - set(reader.fieldnames or [])
++        if absent:
++            raise ValueError('Missing CSV columns: ' + ', '.join(sorted(absent)))
++        rows = list(reader)
++    if not rows:
++        raise ValueError('CSV contains no samples')
++    try:
++        data = {key: np.array([float(row[key]) for row in rows]) for key in required}
++    except (TypeError, ValueError) as error:
++        raise ValueError('Invalid or incomplete CSV row: {}'.format(error))
++    if not np.isfinite(data['time_s']).all():
++        raise ValueError('Nonfinite time values')
++    return data
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('csv', type=Path)
++    parser.add_argument('--output', type=Path, help='PNG/PDF/SVG path (default: beside CSV)')
++    parser.add_argument('--experiment', type=int, help='Select a controller experiment_id')
++    parser.add_argument('--segment', type=int, help='Select a time segment after clock reset')
++    parser.add_argument('--show', action='store_true', help='Also open an interactive window')
++    args = parser.parse_args(argv)
++    import matplotlib
++    if not args.show:
++        matplotlib.use('Agg')
++    import matplotlib.pyplot as plt
++
++    data = load_csv(args.csv)
++    selection = np.ones(len(data['time_s']), dtype=bool)
++    if args.experiment is not None:
++        selection &= data['experiment_id'] == args.experiment
++    if args.segment is not None:
++        selection &= data['time_segment'] == args.segment
++    if not selection.any():
++        raise ValueError('No samples match the requested experiment/segment')
++    data = {key: value[selection] for key, value in data.items()}
++    fig, axes = plt.subplots(4, 1, figsize=(12, 12), sharex=True, constrained_layout=True)
++    colours = plt.get_cmap('tab10')
++    # Never join different attempts, clock resets or known missing samples.
++    boundaries = np.r_[0, np.flatnonzero(
++        (np.diff(data['time_segment']) != 0) | (np.diff(data['experiment_id']) != 0) |
++        (np.diff(data['sample_index']) != 1)) + 1, len(data['time_s'])]
++    for first, last in zip(boundaries[:-1], boundaries[1:]):
++        sl = slice(first, last)
++        t = data['time_s'][sl]
++        experiment = int(data['experiment_id'][first])
++        segment = int(data['time_segment'][first])
++        colour = colours(experiment % 10)
++        label = 'segment {} / experiment {}'.format(segment, experiment)
++        axes[0].plot(t, data['cbf_h'][sl], color=colour, label=label, marker='.', markersize=1)
++        axes[1].plot(t, data['cbf_constraint_safe'][sl], color=colour, marker='.', markersize=1)
++        axes[1].plot(t, -data['cbf_residual_tolerance'][sl], color='gray', linestyle=':',
++                     label='negative tolerance')
++        axes[2].plot(t, data['kinetic_energy_dir'][sl], color=colour, marker='.', markersize=1)
++        axes[2].plot(t, data['Kmax'][sl], color='black', linestyle='--', label='Kmax')
++        for j in range(1, 7):
++            axes[3].plot(t, data['svd_jacobian_{}'.format(j)][sl], color=colours(j - 1),
++                         label=r'$\sigma_{}$'.format(j), marker='.', markersize=1)
++        aborted = data['task_aborted'][sl] != 0
++        bypass = (data['cbf_active'][sl] == 0) & ~aborted
++        for ax in axes:
++            ax.fill_between(t, 0, 1, where=aborted, transform=ax.get_xaxis_transform(),
++                            color='red', alpha=0.10, label='task aborted')
++            ax.fill_between(t, 0, 1, where=bypass, transform=ax.get_xaxis_transform(),
++                            color='gray', alpha=0.10, label='CBF disabled')
++    axes[0].axhline(0, color='black', linestyle='--', linewidth=0.8)
++    axes[1].axhline(0, color='black', linestyle='--', linewidth=0.8)
++    axes[0].set_ylabel('cbf_h [J]')
++    axes[1].set_ylabel('cbf_constraint_safe [J/s]')
++    axes[2].set_ylabel('kinetic_energy_dir [J]')
++    axes[3].set_ylabel('svd_jacobian (full 6 x 7 J)')
++    axes[3].set_xlabel('Simulation time since segment start [s]')
++    for ax in axes:
++        ax.grid(True, alpha=0.25)
++        handles, labels = ax.get_legend_handles_labels()
++        unique = dict(zip(labels, handles))
++        if unique:
++            ax.legend(unique.values(), unique.keys(), loc='best', fontsize=8, ncol=3)
++    fig.suptitle(args.csv.name)
++    suffix = ''
++    if args.segment is not None: suffix += '_segment{}'.format(args.segment)
++    if args.experiment is not None: suffix += '_experiment{}'.format(args.experiment)
++    output = args.output or args.csv.with_name(args.csv.stem + suffix + '.png')
++    output.parent.mkdir(parents=True, exist_ok=True)
++    fig.savefig(output, dpi=160)
++    print('Saved {}'.format(output))
++    print('Samples: {}; missing samples between recorded rows: {}'.format(
++        len(data['time_s']), int(data['missing_samples_before'].sum())))
++    if np.unique(data['time_segment']).size > 1:
++        print('Multiple clock segments overlap on the time axis; use --segment to isolate one.')
++    if args.show: plt.show()
++    plt.close(fig)
++
++
++if __name__ == '__main__':
++    try:
++        main()
++    except (OSError, ValueError) as error:
++        sys.exit('Plot failed: {}'.format(error))
+diff --git a/src/franka_ros/franka_example_controllers/scripts/record_directional_cbf.py b/src/franka_ros/franka_example_controllers/scripts/record_directional_cbf.py
+new file mode 100755
+index 0000000..d5a1240
+--- /dev/null
++++ b/src/franka_ros/franka_example_controllers/scripts/record_directional_cbf.py
+@@ -0,0 +1,116 @@
++#!/usr/bin/env python3
++"""ROS subscriber -> buffered CSV. File I/O runs outside the controller process."""
++import csv
++from datetime import datetime, timezone
++from pathlib import Path
++import queue
++import time
++import uuid
++
++FIELDS = [
++    'stamp_ns', 'time_s', 'time_segment', 'sample_index', 'experiment_id', 'dt',
++    'cbf_h', 'cbf_constraint_safe', 'cbf_constraint_qp', 'kinetic_energy_dir',
++] + ['svd_jacobian_{}'.format(i) for i in range(1, 7)] + [
++    'Kmax', 'alpha', 'cbf_residual_tolerance', 'direction_x', 'direction_y', 'direction_z',
++    'cbf_active', 'task_aborted', 'cbf_solution_applied', 'solver_status',
++    'missing_samples_before', 'frame_id',
++]
++
++
++class CsvRows:
++    """Segment time rewinds/controller restarts, preserving original integer time."""
++    def __init__(self):
++        self.origin_ns = None
++        self.previous_ns = None
++        self.previous_index = None
++        self.segment = 0
++
++    def convert(self, msg):
++        ns = msg.header.stamp.to_nsec()
++        index = int(msg.sample_index)
++        restarted = self.previous_ns is not None and (
++            ns < self.previous_ns or index <= self.previous_index)
++        if restarted:
++            self.segment += 1
++            self.origin_ns = None
++        if self.origin_ns is None:
++            self.origin_ns = ns
++        missing = 0 if self.previous_index is None or restarted else max(
++            0, index - self.previous_index - 1)
++        self.previous_ns, self.previous_index = ns, index
++        return [ns, (ns - self.origin_ns) * 1e-9, self.segment, index,
++                msg.experiment_id, msg.dt, msg.cbf_h, msg.cbf_constraint_safe,
++                msg.cbf_constraint_qp, msg.kinetic_energy_dir] + list(msg.svd_jacobian) + [
++                    msg.Kmax, msg.alpha, msg.cbf_residual_tolerance,
++                ] + list(msg.direction) + [
++                    int(msg.cbf_active), int(msg.task_aborted), int(msg.cbf_solution_applied),
++                    msg.solver_status, missing, msg.header.frame_id,
++                ]
++
++
++def main():
++    import rospy
++    from franka_msgs.msg import DirectionalCbfDiagnostics
++    rospy.init_node('directional_cbf_recorder')
++    output_dir = Path(rospy.get_param('~output_dir', '~/.ros/directional_cbf')).expanduser()
++    output_dir.mkdir(parents=True, exist_ok=True)
++    filename = 'directional_cbf_{}_{}.csv'.format(
++        datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S_%fZ'), uuid.uuid4().hex[:8])
++    path = output_dir / filename
++    pending = queue.Queue(maxsize=20000)
++    dropped = [0]
++
++    def receive(msg):
++        try:
++            pending.put_nowait(msg)
++        except queue.Full:
++            dropped[0] += 1
++            rospy.logwarn_throttle(2.0, 'CBF CSV queue full: samples are being dropped')
++
++    converter = CsvRows()
++    subscriber = rospy.Subscriber('/directional_cbf/diagnostics', DirectionalCbfDiagnostics,
++                                  receive, queue_size=10000, buff_size=4 * 1024 * 1024,
++                                  tcp_nodelay=True)
++    written = 0
++    missing = 0
++    try:
++        # Never overwrite an existing experiment file.
++        with path.open('x', newline='') as stream:
++            writer = csv.writer(stream)
++            writer.writerow(FIELDS)
++            stream.flush()
++            rospy.loginfo('Recording directional CBF CSV: %s', path)
++            last_flush = time.monotonic()
++            stopping = False
++            while True:
++                if rospy.is_shutdown() and not stopping:
++                    subscriber.unregister()
++                    stopping = True
++                if stopping and pending.empty():
++                    break
++                try:
++                    msg = pending.get(timeout=0.2)
++                except queue.Empty:
++                    msg = None
++                if msg is not None:
++                    row = converter.convert(msg)
++                    writer.writerow(row)
++                    written += 1
++                    missing += row[-2]
++                    if row[-2]:
++                        rospy.logwarn_throttle(2.0, 'CBF sample-index gaps detected; see CSV')
++                if time.monotonic() - last_flush >= 1.0:
++                    stream.flush()
++                    last_flush = time.monotonic()
++            stream.flush()
++    finally:
++        subscriber.unregister()
++        rospy.loginfo('CBF CSV: %d rows, %d index gaps, %d local queue drops: %s',
++                      written, missing, dropped[0], path)
++
++
++if __name__ == '__main__':
++    try:
++        main()
++    except (OSError, ValueError) as error:
++        raise SystemExit('CBF CSV recording failed: {}'.format(error))
+diff --git a/src/franka_ros/franka_example_controllers/src/cartesian_impedance_directional_kinetic_energy_cbf_controller.cpp b/src/franka_ros/franka_example_controllers/src/cartesian_impedance_directional_kinetic_energy_cbf_controller.cpp
+index 9660896..c5eee4a 100644
+--- a/src/franka_ros/franka_example_controllers/src/cartesian_impedance_directional_kinetic_energy_cbf_controller.cpp
++++ b/src/franka_ros/franka_example_controllers/src/cartesian_impedance_directional_kinetic_energy_cbf_controller.cpp
+@@ -161,6 +161,10 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::init(
+     return false;
+   }
+ 
++  base_frame_ = arm_id + "_link0";
++  diagnostics_publisher_ = std::make_unique<realtime_tools::RealtimePublisher<
++      franka_msgs::DirectionalCbfDiagnostics>>(node_handle, "/directional_cbf/diagnostics", 1000);
++
+   if (!readParameters(node_handle)) {
+     return false;
+   }
+@@ -322,6 +326,7 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
+   Eigen::Quaterniond orientation(transform.rotation());
+ 
+   if (task_state_.consumeStartRequest()) {
++    ++experiment_id_;
+     // Restart from the measured pose; keep the new requested target.
+     position_d_ = position;
+     orientation_d_ = orientation;
+@@ -439,6 +444,41 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
+   cbf_info_.solver_status = task_state_.aborted() ? task_state_.error() : cbf_result.solver_status;
+   cbf_info_.header.stamp = time;
+   cbf_publisher_.publish(cbf_info_);
++
++  // No file I/O here. sample_index exposes missed trylocks/transport samples.
++  const uint64_t sample_index = diagnostic_sample_index_++;
++  if (diagnostics_publisher_->trylock()) {
++    auto& diagnostic = diagnostics_publisher_->msg_;
++    diagnostic.header.stamp = time;
++    diagnostic.header.frame_id = base_frame_;
++    diagnostic.sample_index = sample_index;
++    diagnostic.experiment_id = experiment_id_;
++    diagnostic.dt = period.toSec();
++    diagnostic.cbf_h = cbf_result.h;
++    diagnostic.kinetic_energy_dir = cbf_result.directional_kinetic_energy;
++    diagnostic.cbf_constraint_safe = std::numeric_limits<double>::quiet_NaN();
++    if (cbf_result.barrier_model_valid && tau_command.allFinite() && coriolis.allFinite()) {
++      diagnostic.cbf_constraint_safe =
++          (cbf_result.barrier_a * (tau_command - coriolis))(0, 0) +
++          cbf_result.barrier_b + alpha_ * cbf_result.h;
++    }
++    diagnostic.cbf_constraint_qp = cbf_result.constraint_qp;
++    diagnostic.Kmax = Kmax_;
++    diagnostic.alpha = alpha_;
++    diagnostic.cbf_residual_tolerance = cbf_residual_tolerance_;
++    for (int i = 0; i < 3; ++i) diagnostic.direction[i] = direction_(i);
++    for (int i = 0; i < 6; ++i)
++      diagnostic.svd_jacobian[i] = std::numeric_limits<double>::quiet_NaN();
++    if (jacobian.allFinite()) {
++      const Eigen::JacobiSVD<Matrix6x7d> svd(jacobian);
++      for (int i = 0; i < 6; ++i) diagnostic.svd_jacobian[i] = svd.singularValues()(i);
++    }
++    diagnostic.cbf_active = cbf_active_;
++    diagnostic.task_aborted = task_state_.aborted();
++    diagnostic.cbf_solution_applied = !task_state_.aborted() && cbf_result.solver_status == 1;
++    diagnostic.solver_status = cbf_info_.solver_status;
++    diagnostics_publisher_->unlockAndPublish();
++  }
+ }
+ 
+ CartesianImpedanceDirectionalKineticEnergyCBFController::CbfResult
+@@ -569,13 +609,6 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
+   result.h = h;
+   result.directional_kinetic_energy = directional_energy;
+ 
+-  // If the CBF is disabled, keep calculating/publishing the energy diagnostics
+-  // and derivative history, but do not modify u_nominal and do not solve the QP.
+-  if (!enforce_cbf) {
+-    result.solver_status = 0;
+-    return result;
+-  }
+-
+   // -------------------------------------------------------------------------
+   // CBF derivative in the compensated coordinates used by the notes:
+   //
+@@ -590,6 +623,16 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
+       -directional_velocity * lambda_dir * (directional_jacobian_dot * dq)(0, 0) -
+       0.5 * directional_velocity * lambda_dir_dot * directional_velocity;
+ 
++  result.barrier_a = a;
++  result.barrier_b = b;
++  result.barrier_model_valid = a.allFinite() && std::isfinite(b) && std::isfinite(h);
++
++  // Diagnostics also describe nominal and abort commands. Enforcement is unchanged.
++  if (!enforce_cbf) {
++    result.solver_status = 0;
++    return result;
++  }
++
+   // h_dot + alpha*h >= 0  ->  a*u >= -alpha*h - b.
+   const double cbf_lower_bound = -alpha_ * h - b;
+   if (!a.allFinite() || !std::isfinite(cbf_lower_bound) ||
+@@ -650,6 +693,7 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
+   }
+ 
+   const double safe_constraint = (a * solution)(0, 0) + b + alpha_ * h;
++  result.constraint_qp = safe_constraint;
+   if (!DirectionalCbfTaskState::acceptsSolution(true, safe_constraint,
+                                                cbf_residual_tolerance_)) {
+     ROS_ERROR_STREAM_THROTTLE(
+diff --git a/src/franka_ros/franka_msgs/CMakeLists.txt b/src/franka_ros/franka_msgs/CMakeLists.txt
+index d855eef..6016dfb 100644
+--- a/src/franka_ros/franka_msgs/CMakeLists.txt
++++ b/src/franka_ros/franka_msgs/CMakeLists.txt
+@@ -3,7 +3,7 @@ project(franka_msgs)
+ 
+ find_package(catkin REQUIRED COMPONENTS message_generation geometry_msgs std_msgs sensor_msgs actionlib_msgs)
+ 
+-add_message_files(FILES Errors.msg FrankaState.msg Cbf.msg)
++add_message_files(FILES Errors.msg FrankaState.msg Cbf.msg DirectionalCbfDiagnostics.msg)
+ 
+ add_service_files(FILES
+   SetCartesianImpedance.srv
+diff --git a/src/franka_ros/franka_msgs/msg/DirectionalCbfDiagnostics.msg b/src/franka_ros/franka_msgs/msg/DirectionalCbfDiagnostics.msg
+new file mode 100644
+index 0000000..e82f32c
+--- /dev/null
++++ b/src/franka_ros/franka_msgs/msg/DirectionalCbfDiagnostics.msg
+@@ -0,0 +1,21 @@
++# One controller sample. Missing/unavailable numeric diagnostics are NaN.
++std_msgs/Header header
++uint64 sample_index
++uint64 experiment_id
++float64 dt
++float64 cbf_h
++# a*(tau_command-coriolis)+b+alpha*h, including bypass/abort commands.
++float64 cbf_constraint_safe
++# Residual of the QP candidate, including candidates rejected by the residual check.
++float64 cbf_constraint_qp
++float64 kinetic_energy_dir
++# Six singular values of the full base-frame geometric 6x7 Jacobian, descending.
++float64[6] svd_jacobian
++float64 Kmax
++float64 alpha
++float64 cbf_residual_tolerance
++float64[3] direction
++bool cbf_active
++bool task_aborted
++bool cbf_solution_applied
++uint8 solver_status
