@@ -127,7 +127,9 @@ roslaunch franka_example_controllers \
   direction_z:=0.0 \
   headless:=false \
   rviz:=false \
-  log_dir:="$HOME/Riccardo/franka_ws_013/data"  
+  enable_joint_initialization:=true \
+  record_cbf:=true \
+  log_dir:="$HOME/Riccardo/franka_ws_013/data"
 ```
 Recording starts with the first `set_experiment_command` call. Core CBF data
 are recorded from then on; additional debug data are recorded with CBF active.
@@ -140,39 +142,46 @@ Output directory: `~/Riccardo/franka_ws_013/data`.
 rqt_plot /cbf_info/kinetic_energy /cbf_info/directional_kinetic_energy /cbf_info/Kmax
 ```
 
-**Terminal 3 - forward, CBF off:**
+**Terminal 3**
+
+
+**Initial Configuration**
+
+```bash
+rosservice call /trajectory_publisher/initialize_joint_pose \
+"q: [0.0, -0.2, 0.0, -2.2, 0.0, 3.2, 0.785398163397]
+duration: 12.0"
+```
+
+**Forward, CBF off:**
 
 ```bash
 rosservice call /trajectory_publisher/set_experiment_command \
-"x_move: 0.20
-y_move: 0.0
+"x_move: 0.1
+y_move: 0.2
 z_move: 0.0
 cbf_active: false
-Kmax: 0.05
+Kmax: 0.02
 alpha: 1.0"
 ```
 
-**Return, CBF off:**
+**Initial Configuration**
 
 ```bash
-rosservice call /trajectory_publisher/set_experiment_command \
-"x_move: -0.20
-y_move: 0.0
-z_move: 0.0
-cbf_active: false
-Kmax: 0.05
-alpha: 1.0"
+rosservice call /trajectory_publisher/initialize_joint_pose \
+"q: [0.0, -0.2, 0.0, -2.2, 0.0, 3.2, 0.785398163397]
+duration: 12.0"
 ```
 
 **Forward, CBF on:**
 
 ```bash
 rosservice call /trajectory_publisher/set_experiment_command \
-"x_move: 0.20
-y_move: 0.0
+"x_move: 0.1
+y_move: 0.2
 z_move: 0.0
 cbf_active: true
-Kmax: 0.05
+Kmax: 0.02
 alpha: 1.0"
 ```
 
