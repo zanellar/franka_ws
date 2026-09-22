@@ -1,124 +1,21 @@
-# Franka ROS 1 Workspace with Cartesian Impedance and CBF Controllers
+# Franka ROS 1 Workspace with Kinetic-Energy CBF Controllers
 
-This repository is a ROS 1 Catkin workspace based on `franka_ros` and
-extended with Cartesian-impedance controllers, total and directional
-kinetic-energy Control Barrier Functions (CBFs), OSQP-based torque
-filtering, trajectory publishers, diagnostics, RViz support, and Gazebo
-integration.
+ROS Noetic / Gazebo experiments with Cartesian impedance and total or directional
+kinetic-energy Control Barrier Functions (CBFs).
 
-The procedure below has been validated for the `franka_ws_013` branch
-with:
+This guide targets branch **`franka_ws_013_gazebo`**, workspace
+`~/Riccardo/franka_ws_013`, and libfranka **0.13.3** installed at
+`~/Riccardo/libfranka-0.13.3/install`. The build environment is Ubuntu 20.04,
+GCC/G++ 10, C++17, Gazebo 11 and SDFormat 9. Examples use an FR3 without a gripper.
 
--   Ubuntu 20.04
--   ROS Noetic
--   GCC/G++ 10
--   C++17
--   libfranka 0.13.3 installed in an isolated prefix
--   Gazebo 11
--   SDFormat 9
--   Franka Research 3 (FR3)
--   no Franka Hand (`load_gripper:=false`)
+- [Installation](#installation)
+- [Tests in Gazebo](#tests-in-gazebo)
+- [Test in Real robot](#test-in-real-robot)
+- [Plot data](#plot-data)
 
-> **Safety notice**
->
-> These controllers command joint torques. On physical hardware, clear
-> the robot workspace, keep the user-stop accessible, enable FCI only
-> when ready, and begin with a hold trajectory and `cbf_active:=false`.
-> Stop immediately in case of oscillation, repeated solver failure,
-> communication errors, or unexpected motion. A CBF or QP solver does
-> not by itself make an experiment safe.
+## Installation
 
-------------------------------------------------------------------------
-
-## Contents
-
--   [Repository layout](#repository-layout)
--   [Controllers](#controllers)
--   [Installation](#installation)
--   [Runtime environment](#runtime-environment)
--   [Build verification](#build-verification)
--   [Gazebo test](#gazebo-test)
--   [Linear trajectory command
-    service](#linear-trajectory-command-service)
--   [Hardware preparation](#hardware-preparation)
--   [Run controllers](#run-controllers)
--   [Manual equilibrium pose](#manual-equilibrium-pose)
--   [Diagnostics](#diagnostics)
--   [Troubleshooting](#troubleshooting)
--   [Development workflow](#development-workflow)
-
-------------------------------------------------------------------------
-
-## Repository layout
-
-The documented installation uses:
-
-``` text
-~/Riccardo/
-├── franka_ws_013/
-└── libfranka-0.13.3/
-    └── install/
-```
-
-The workspace is expected at:
-
-``` text
-~/Riccardo/franka_ws_013
-```
-
-The custom libfranka installation is expected at:
-
-``` text
-~/Riccardo/libfranka-0.13.3/install
-```
-
-------------------------------------------------------------------------
-
-## Controllers
-
-  -----------------------------------------------------------------------------------------------------
-  Controller                                                        Purpose
-  ----------------------------------------------------------------- -----------------------------------
-  `cartesian_impedance_example_controller`                          Standard Cartesian impedance
-                                                                    controller.
-
-  `cartesian_impedance_cbf_controller`                              Cartesian impedance with a total
-                                                                    joint-space kinetic-energy CBF.
-
-  `cartesian_impedance_dead_zone_cbf_controller`                    Total-energy CBF with a Cartesian
-                                                                    dead zone.
-
-  `cartesian_impedance_cbf_interaction_controller`                  Total-energy CBF with interaction
-                                                                    handling.
-
-  `cartesian_impedance_dead_zone_cbf_interaction_controller`        Dead-zone and interaction variant.
-
-  `cartesian_impedance_cbf_interaction_power_controller`            Energy and interaction-power
-                                                                    limiting.
-
-  `cartesian_impedance_directional_kinetic_energy_cbf_controller`   Limits translational kinetic energy
-                                                                    along a selected base-frame
-                                                                    direction.
-  -----------------------------------------------------------------------------------------------------
-
-For the directional controller:
-
-``` text
-K_dir = 0.5 * lambda_dir * v_dir^2
-h     = Kmax - K_dir
-```
-
-The safe set is:
-
-``` text
-h >= 0
-```
-
-------------------------------------------------------------------------
-
-# Installation
-
-## 1. Install ROS Noetic and build tools
+### 1. Install ROS Noetic and build tools
 
 ``` bash
 sudo apt update
@@ -128,6 +25,8 @@ sudo apt install -y \
   python3-rosdep \
   python3-catkin-tools \
   python3-vcstool \
+  python3-numpy \
+  python3-matplotlib \
   build-essential \
   gcc-10 \
   g++-10 \
@@ -160,13 +59,13 @@ Source ROS:
 source /opt/ros/noetic/setup.bash
 ```
 
-## 2. Clone the workspace
+### 2. Clone the workspace
 
 ``` bash
 mkdir -p ~/Riccardo
 
 git clone \
-  --branch franka_ws_013 \
+  --branch franka_ws_013_gazebo \
   --single-branch \
   https://github.com/zanellar/franka_ws.git \
   ~/Riccardo/franka_ws_013
@@ -178,10 +77,10 @@ git branch --show-current
 Expected:
 
 ``` text
-franka_ws_013
+franka_ws_013_gazebo
 ```
 
-## 3. Build libfranka 0.13.3
+### 3. Build libfranka 0.13.3
 
 ``` bash
 git clone \
@@ -224,7 +123,18 @@ The installed ABI must include:
 libfranka.so.0.13
 ```
 
-## 4. Install ROS package dependencies
+### 4. Install ROS package dependencies
+
+The joint initialization service requires the standard effort trajectory controller:
+
+```bash
+sudo apt install ros-noetic-joint-trajectory-controller
+```
+
+This package provides `effort_controllers/JointTrajectoryController`. If it is
+installed while Gazebo is running, restart the launch once so the controller
+manager discovers it. Installing this binary package alone does not require
+recompiling this workspace.
 
 The custom libfranka installation replaces the ROS binary `libfranka`
 package for this workspace.
@@ -241,7 +151,7 @@ rosdep install \
   -y
 ```
 
-## 5. Required CMake configuration
+### 5. Required CMake configuration
 
 This branch must compile the controller stack and vendored dependencies
 as C++17.
@@ -321,7 +231,7 @@ target_link_libraries(franka_hw_sim
 )
 ```
 
-## 6. Clean old dependency caches
+### 6. Optional clean build
 
 ``` bash
 cd ~/Riccardo/franka_ws_013
@@ -333,13 +243,9 @@ rm -rf \
   install
 ```
 
-Optional cleanup of editor backup files:
+The cleanup removes generated build/install directories. Skip it for normal incremental builds.
 
-``` bash
-find src -name '*~' -delete
-```
-
-## 7. Build and install the Catkin workspace
+### 7. Build and install the Catkin workspace
 
 ``` bash
 cd ~/Riccardo/franka_ws_013
@@ -351,6 +257,7 @@ export CXX=/usr/bin/g++-10
 export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
 
 catkin_make install \
+  -DCMAKE_INSTALL_PREFIX="$PWD/install" \
   -DCMAKE_C_COMPILER=/usr/bin/gcc-10 \
   -DCMAKE_CXX_COMPILER=/usr/bin/g++-10 \
   -DCMAKE_CXX_STANDARD=17 \
@@ -370,7 +277,7 @@ A successful Abseil configuration should report:
 Performing Test ABSL_INTERNAL_AT_LEAST_CXX17 - Success
 ```
 
-## 8. Copy Abseil shared libraries
+### 8. Copy Abseil shared libraries
 
 ``` bash
 cd ~/Riccardo/franka_ws_013
@@ -379,9 +286,8 @@ cp -a devel/lib/libabsl*.so* install/lib/
 
 Run this after every clean build.
 
-------------------------------------------------------------------------
 
-# Runtime environment
+### Runtime environment
 
 Use this block in every fresh terminal:
 
@@ -392,7 +298,7 @@ source /opt/ros/noetic/setup.bash
 source install/setup.bash
 
 export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
-export LD_LIBRARY_PATH="$PWD/install/lib:$FRANKA_013_PREFIX/lib:/opt/ros/noetic/lib:${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="$PWD/install/lib:$FRANKA_013_PREFIX/lib:/opt/ros/noetic/lib:/opt/ros/noetic/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"
 ```
 
 Create a helper script:
@@ -407,7 +313,7 @@ source /opt/ros/noetic/setup.bash
 source install/setup.bash
 
 export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
-export LD_LIBRARY_PATH="$PWD/install/lib:$FRANKA_013_PREFIX/lib:/opt/ros/noetic/lib:${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="$PWD/install/lib:$FRANKA_013_PREFIX/lib:/opt/ros/noetic/lib:/opt/ros/noetic/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"
 EOS
 
 chmod +x ~/Riccardo/franka_ws_013/env.sh
@@ -421,9 +327,8 @@ source ~/Riccardo/franka_ws_013/env.sh
 
 Do not source an older Franka workspace in the same terminal.
 
-------------------------------------------------------------------------
 
-# Build verification
+### Build verification
 
 ``` bash
 source ~/Riccardo/franka_ws_013/env.sh
@@ -480,115 +385,65 @@ grep -RIn \
 
 Expected: no output.
 
-------------------------------------------------------------------------
 
-# Gazebo test
 
-## Validate the generated URDF
+Check controller registration, the installed launch, and service definitions:
 
-``` bash
-xacro \
-  ~/Riccardo/franka_ws_013/src/franka_ros/franka_description/robots/fr3/fr3.urdf.xacro \
-  gazebo:=true \
-  hand:=false \
-  arm_id:=fr3 \
-  > /tmp/fr3_gazebo.urdf
+```bash
+rospack find joint_trajectory_controller
+rospack plugins --attrib=plugin controller_interface | grep franka_example_controllers
+ls -l install/lib/libfranka_example_controllers.so install/lib/libfranka_hw_sim.so
+ls -l install/share/franka_example_controllers/launch/*cbf*gazebo.launch
+rossrv show franka_trajectory/SetLinearCommand
+rossrv show franka_trajectory/InitializeJointPose
 ```
 
-``` bash
-check_urdf /tmp/fr3_gazebo.urdf
+`SetLinearCommand` must include `x_move`, `y_move`, `z_move`, `cbf_active`,
+`Kmax`, and `alpha`. `InitializeJointPose` must include `q` and `duration`.
+`rospack find franka_example_controllers` should resolve to this workspace's
+`install/share/franka_example_controllers` directory.
+
+After changing C++, service definitions or launch files, rerun the full
+`catkin_make install` command above, copy the Abseil libraries, and source
+`env.sh` again. Restart affected nodes after installation. Editing files in
+`src` alone does not update the copies used from `install`.
+
+If a library is missing, inspect the `ldd` output above. For Abseil, repeat the
+copy step. If compilation still refers to an old C++ standard or SDFormat path,
+perform the optional clean build. Do not create fake SDFormat compatibility
+symlinks. Do not source another Franka workspace in the same terminal.
+
+## Tests in Gazebo
+
+Run one Gazebo experiment at a time. Use a separate terminal for the launch,
+live plots, and service calls. In **every new terminal** run:
+
+```bash
+source "$HOME/Riccardo/franka_ws_013/env.sh"
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/opt/ros/noetic/lib/x86_64-linux-gnu"
 ```
 
-Verify the Gazebo ROS control plugin:
+Wait for the controllers to start. Send movement commands individually and wait
+for the robot to settle between them. `success: true` from an experiment command
+means the target was accepted, not that the movement has finished.
 
-``` bash
-grep -A8 -B2 "gazebo_ros_control" /tmp/fr3_gazebo.urdf
-```
+With `trajectory:=linear start_trajectory:=true`, the service accepts XYZ target
+increments in meters in the robot base frame. Each request increments the
+**previous target**, not the current measured EE position. Repeated calls
+accumulate displacement; orientation is preserved. The reference is filtered
+by the Cartesian controller, so this is not a constant-speed trajectory with a
+specified duration. Use zero for unused axes.
 
-Verify that no gripper joints are present:
+### Total energy
 
-``` bash
-grep -E "finger_joint|hand_joint|franka_hand" /tmp/fr3_gazebo.urdf
-```
+The total-energy controller constrains the robot's joint-space kinetic energy.
+`Kmax` is in joules and `cbf_active` selects whether the CBF torque filter is used.
 
-Expected: no output.
+#### Launch and live plot
 
-## Start the controller with the CBF disabled
+**Terminal 1:**
 
-``` bash
-source ~/Riccardo/franka_ws_013/env.sh
-
-roslaunch franka_example_controllers \
-  cartesian_impedance_cbf_controller_gazebo.launch \
-  cbf_active:=false \
-  start_trajectory:=false \
-  headless:=false \
-  rviz:=false
-```
-
-Verify:
-
-``` bash
-rosservice call /controller_manager/list_controllers
-rostopic hz /franka_state_controller/franka_states
-rostopic hz /franka_state_controller/joint_states
-```
-
-------------------------------------------------------------------------
-
-# Linear trajectory command service
-
-The workspace includes a `linear` trajectory publisher for repeatable
-Gazebo and hardware experiments.
-
-Unlike `hold`, which continuously publishes one fixed equilibrium pose,
-`linear` stores the current target pose and allows it to be updated
-while the controller is running. The update is sent through:
-
-``` text
-/trajectory_publisher/set_experiment_command
-```
-
-The service request contains:
-
-``` text
-float64 x_move
-bool cbf_active
-float64 Kmax
-float64 alpha
-```
-
-The service performs one coordinated experiment command:
-
-1.  update `cbf_active`, `Kmax`, and `alpha` through the controller's
-    dynamic-reconfigure server;
-2.  add `x_move` to the currently stored Cartesian x target;
-3.  keep publishing the resulting equilibrium pose until the next
-    service request.
-
-The displacement is relative and cumulative:
-
-``` text
-new_target_x = current_target_x + x_move
-```
-
-For example, starting from `x = 0.307`:
-
-``` text
-x_move =  0.20  -> x = 0.507
-x_move = -0.20  -> x = 0.307
-```
-
-The service response reports whether the update succeeded and returns
-the applied pose.
-
-## Gazebo test with the linear trajectory
-
-Start Gazebo with the `linear` trajectory enabled:
-
-``` bash
-source ~/Riccardo/franka_ws_013/env.sh
-
+```bash
 roslaunch franka_example_controllers \
   cartesian_impedance_cbf_controller_gazebo.launch \
   trajectory:=linear \
@@ -600,645 +455,397 @@ roslaunch franka_example_controllers \
   rviz:=false
 ```
 
-Leave the launch terminal running.
+**Terminal 2:**
 
-In a second terminal:
-
-``` bash
-source ~/Riccardo/franka_ws_013/env.sh
-```
-
-Verify that the trajectory service and the controller
-dynamic-reconfigure service are available:
-
-``` bash
-rosservice list | grep -E \
-  'set_experiment_command|dynamic_reconfigure_compliance_param_node/set_parameters'
-```
-
-Expected services include:
-
-``` text
-/trajectory_publisher/set_experiment_command
-/cartesian_impedance_cbf_controller/dynamic_reconfigure_compliance_param_node/set_parameters
-```
-
-Run the following three test commands in sequence.
-
-### Test 1: move forward with the CBF disabled
-
-``` bash
-rosservice call \
-  /trajectory_publisher/set_experiment_command \
-  "x_move: 0.20
-cbf_active: false
-Kmax: 20.0
-alpha: 1.0"
-```
-
-Expected applied x target:
-
-``` text
-x = 0.507
-```
-
-### Test 2: move back to the initial target with the CBF disabled
-
-``` bash
-rosservice call \
-  /trajectory_publisher/set_experiment_command \
-  "x_move: -0.20
-cbf_active: false
-Kmax: 20.0
-alpha: 1.0"
-```
-
-Expected applied x target:
-
-``` text
-x = 0.307
-```
-
-### Test 3: move forward with the CBF enabled
-
-``` bash
-rosservice call \
-  /trajectory_publisher/set_experiment_command \
-  "x_move: 0.20
-cbf_active: true
-Kmax: 0.01
-alpha: 1.0"
-```
-
-Expected applied x target:
-
-``` text
-x = 0.507
-```
-
-The expected service response is:
-
-``` text
-success: True
-message: "Pose and CBF parameters updated."
-```
-
-Verify the pose being republished:
-
-``` bash
-rostopic echo -n 1 /trajectory_publisher/equilibrium_pose
-```
-
-Verify the active CBF parameters:
-
-``` bash
-rosrun dynamic_reconfigure dynparam get \
-  /cartesian_impedance_cbf_controller/dynamic_reconfigure_compliance_param_node
-```
-
-The final test should report values equivalent to:
-
-``` yaml
-cbf_active: true
-Kmax: 0.01
-alpha: 1.0
-```
-
-## Visualize kinetic energy and CBF limit
-
-The controller publishes the CBF diagnostic message:
-
-``` text
-/cbf_info
-```
-
-The message contains the quantities required to evaluate the
-kinetic-energy CBF behavior:
-
-``` text
-/cbf_info/kinetic_energy
-/cbf_info/Kmax
-/cbf_info/h
-```
-
-where:
-
--   `kinetic_energy` is the measured joint-space kinetic energy;
--   `Kmax` is the active kinetic-energy limit;
--   `h` is the CBF safety function:
-
-``` text
-h = Kmax - kinetic_energy
-```
-
-To open an `rqt_plot` window already configured with the kinetic energy
-and the active limit:
-
-``` bash
+```bash
 rqt_plot /cbf_info/kinetic_energy /cbf_info/Kmax
 ```
 
-For a complete CBF validation plot including the safety margin:
+#### Execute the test
 
-``` bash
-rqt_plot \
-  /cbf_info/kinetic_energy \
-  /cbf_info/Kmax \
-  /cbf_info/h
-```
+**Terminal 3 - forward, CBF off:**
 
-During the three-step experiment above:
-
-1.  `kinetic_energy` should change during the motion;
-2.  changing `Kmax` through
-    `/trajectory_publisher/set_experiment_command` should update the
-    `Kmax` curve;
-3.  when the CBF is active, the kinetic energy should remain below the
-    selected `Kmax` value.
-
-## Command semantics and precautions
-
-`x_move` is an increment, not an absolute x coordinate. Repeating the
-same command repeatedly continues to move the target:
-
-``` text
-0.307 -> 0.507 -> 0.707
-```
-
-Use small increments during initial hardware testing, for example:
-
-``` bash
-rosservice call \
-  /trajectory_publisher/set_experiment_command \
-  "x_move: 0.01
+```bash
+rosservice call /trajectory_publisher/set_experiment_command \
+"x_move: 0.20
+y_move: 0.0
+z_move: 0.0
 cbf_active: false
 Kmax: 20.0
 alpha: 1.0"
 ```
 
-The combined service requires the Cartesian CBF controller to be
-running. If the controller dynamic-reconfigure service is unavailable,
-the request fails with:
+**After settling - return, CBF off:**
 
-``` text
-Failed to update the controller dynamic-reconfigure service.
+```bash
+rosservice call /trajectory_publisher/set_experiment_command \
+"x_move: -0.20
+y_move: 0.0
+z_move: 0.0
+cbf_active: false
+Kmax: 20.0
+alpha: 1.0"
 ```
 
-For physical-robot tests, define and enforce suitable Cartesian
-workspace limits inside `linear.cpp` before using large cumulative
-offsets.
+**After settling - forward, CBF on:**
 
-# Hardware preparation
-
-Before every physical-robot launch:
-
-1.  Connect the control computer directly to the robot network.
-2.  Configure the Ethernet interface in the robot subnet.
-3.  Verify connectivity with `ping -c 4 172.16.0.2`.
-4.  Open Franka Desk.
-5.  Unlock the joints.
-6.  Enable FCI.
-7.  Confirm no other FCI client is connected.
-8.  Clear the workspace and keep the user-stop accessible.
-
-For an FR3 without a Hand:
-
-``` text
-robot:=fr3
-load_gripper:=false
+```bash
+rosservice call /trajectory_publisher/set_experiment_command \
+"x_move: 0.20
+y_move: 0.0
+z_move: 0.0
+cbf_active: true
+Kmax: 0.01
+alpha: 1.0"
 ```
 
-Optional latency test:
+The request changes `cbf_active`, `Kmax` and `alpha` through the service; no
+launch restart is needed for these fields. Use a positive `Kmax` and `alpha`.
+Returning the Cartesian target does not guarantee identical joint angles on a
+redundant robot.
 
-``` bash
-sudo cyclictest \
-  --mlockall \
-  --smp \
-  --priority=80 \
-  --interval=1000 \
-  --duration=60s
+#### Launch arguments
+
+Pass arguments as `name:=value` on the `roslaunch` command.
+
+| Argument | Default | Usage |
+| --- | --- | --- |
+| `robot` | `fr3` | Robot identifier; this launch loads the FR3 URDF. |
+| `arm_id` | value of `robot` | Joint and frame prefix; keep consistent with the model. |
+| `use_gripper` | `false` | Include the hand in the Gazebo model. |
+| `headless` | `false` | `true` hides the Gazebo GUI. |
+| `paused` | `false` | Keep physics paused after spawning when `true`. |
+| `rviz` | `true` | Start RViz. Independent of the Gazebo GUI. |
+| `cbf_active` | `false` | Initial CBF state; overridden by experiment requests. |
+| `Kmax` | `1.0` | Initial kinetic-energy threshold in J. |
+| `alpha` | `1.0` | Initial CBF gain. |
+| `damping_ratio` | `1.0` | Cartesian impedance damping setting; not Gazebo joint friction. |
+| `qp_time_limit` | `0.01` | QP time budget in seconds for the total-energy controller. |
+| `start_trajectory` | `false` | Start the selected trajectory publisher. |
+| `trajectory` | `hold` | Use `linear` for XYZ experiment service commands. |
+| `publish_rate` | `100` | Trajectory publisher frequency in Hz, not controller frequency. |
+
+The total-energy launch does not expose the directional CSV recorder or the
+joint initialization enable argument. Use its live energy topics for this test;
+the CSV workflow below belongs to the directional controller.
+
+### Directional kinetic energy
+
+The directional controller constrains translational kinetic energy along the
+selected direction in the robot base frame:
+
+```text
+h = Kmax - kinetic_energy_dir
 ```
 
-------------------------------------------------------------------------
+`h >= 0` means the recorded energy is at or below `Kmax`. The direction vector
+is normalized internally and must be nonzero. It is independent of the commanded
+XYZ displacement: `direction_x:=1 direction_y:=0 direction_z:=0` limits x-directed
+energy even when the target moves along both x and y. It does not limit total
+kinetic energy or energy along every direction.
 
-# Run controllers
+#### Launch and live plot
 
-## Baseline: CBF disabled
+**Terminal 1:**
 
-``` bash
-source ~/Riccardo/franka_ws_013/env.sh
-
+```bash
 roslaunch franka_example_controllers \
-  cartesian_impedance_cbf_controller.launch \
-  robot_ip:=172.16.0.2 \
-  load_gripper:=false \
-  robot:=fr3 \
-  trajectory:=hold \
+  cartesian_impedance_directional_kinetic_energy_cbf_controller_gazebo.launch \
+  trajectory:=linear \
+  start_trajectory:=true \
   cbf_active:=false \
-  alpha:=1.0 \
-  rosbag:=false
-```
-
-## Total kinetic-energy CBF enabled
-
-``` bash
-source ~/Riccardo/franka_ws_013/env.sh
-
-roslaunch franka_example_controllers \
-  cartesian_impedance_cbf_controller.launch \
-  robot_ip:=172.16.0.2 \
-  load_gripper:=false \
-  robot:=fr3 \
-  trajectory:=hold \
-  Kmax:=1.0 \
-  cbf_active:=true \
-  alpha:=1.0 \
-  rosbag:=false
-```
-
-## Directional kinetic-energy CBF
-
-``` bash
-source ~/Riccardo/franka_ws_013/env.sh
-
-roslaunch franka_example_controllers \
-  cartesian_impedance_directional_kinetic_energy_cbf_controller.launch \
-  robot_ip:=172.16.0.2 \
-  load_gripper:=false \
-  robot:=fr3 \
-  trajectory:=hold \
-  Kmax:=0.1 \
+  Kmax:=20.0 \
   alpha:=1.0 \
   direction_x:=1.0 \
   direction_y:=0.0 \
   direction_z:=0.0 \
-  cbf_active:=true \
-  rosbag:=false
+  headless:=false \
+  rviz:=false \
+  enable_joint_initialization:=true \
+  record_cbf:=true \
+  log_dir:="$HOME/Riccardo/franka_ws_013/data"
 ```
 
-The direction vector is normalized internally. A zero vector is invalid.
+Keep the trailing backslash on every continued line except the last. Use an
+absolute `log_dir`; `home/user/...` without a leading `/` is a relative path.
 
-------------------------------------------------------------------------
+**Terminal 2:**
 
-# Manual equilibrium pose
-
-The CBF controllers subscribe to:
-
-``` text
-/trajectory_publisher/equilibrium_pose
+```bash
+rqt_plot /cbf_info/kinetic_energy /cbf_info/directional_kinetic_energy /cbf_info/Kmax
 ```
 
-The `hold` publisher continuously overwrites manual targets. Stop only
-that publisher:
+#### Execute the test
 
-``` bash
-rosnode kill /trajectory_publisher
+**Terminal 3 - forward, CBF off:**
+
+```bash
+rosservice call /trajectory_publisher/set_experiment_command \
+"x_move: 0.20
+y_move: 0.0
+z_move: 0.0
+cbf_active: false
+Kmax: 0.05
+alpha: 1.0"
 ```
 
-Confirm the controller remains subscribed:
+**After settling - return, CBF off:**
 
-``` bash
-rostopic info /trajectory_publisher/equilibrium_pose
+```bash
+rosservice call /trajectory_publisher/set_experiment_command \
+"x_move: -0.20
+y_move: 0.0
+z_move: 0.0
+cbf_active: false
+Kmax: 0.05
+alpha: 1.0"
 ```
 
-Inspect the current transform:
+**After settling - forward, CBF on:**
 
-``` bash
-rosrun tf tf_echo fr3_link0 fr3_EE
+```bash
+rosservice call /trajectory_publisher/set_experiment_command \
+"x_move: 0.20
+y_move: 0.0
+z_move: 0.0
+cbf_active: true
+Kmax: 0.05
+alpha: 1.0"
 ```
 
-Publish a one-shot target:
+These reproduce the commands in `how_to_run.md`; the displacement is an example,
+not a guarantee of avoiding joint stops or collisions for every initial posture.
+A failed directional CBF calculation aborts the task while keeping the node
+available. Read the reported error and submit a new experiment with revised
+parameters once the cause is resolved.
 
-``` bash
-rostopic pub -1 \
-  /trajectory_publisher/equilibrium_pose \
-  geometry_msgs/PoseStamped \
-  "{header: {stamp: now, frame_id: 'fr3_link0'},
-    pose: {
-      position: {x: 0.40, y: 0.00, z: 0.50},
-      orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
-    }}"
+#### Launch arguments
+
+The common arguments in the total-energy table also apply here **except
+`qp_time_limit`**, which is not an argument of the directional launch. Its
+additional arguments are:
+
+| Argument | Default | Usage |
+| --- | --- | --- |
+| `direction_x` | `1.0` | x component of the base-frame energy direction. |
+| `direction_y` | `0.0` | y component of the base-frame energy direction. |
+| `direction_z` | `0.0` | z component of the base-frame energy direction. |
+| `mobility_epsilon` | `1e-8` | Numerical threshold used for directional mobility validity. |
+| `derivative_filter_alpha` | `0.05` | Filter weight for numerical derivatives; separate from the CBF gain `alpha`. |
+| `enable_joint_initialization` | `true` | Enable joint initialization through `linear`; other trajectory publishers do not implement it. |
+| `record_cbf` | `true` | Start the recorder node and contact bridge; files open only when recording is triggered. |
+| `log_dir` | `$HOME/.ros/directional_cbf` | Root directory for automatically created session folders. |
+| `state_publish_rate` | `1000` | Franka state publication frequency in Hz; not a CSV downsampling setting. |
+| `gazebo_world` | `default` | World name used by the contact bridge; does not select a world file. |
+| `joint_limit_diagnostics` | `true` | Publish live distances of joint positions from URDF limits. |
+| `plot_joint_limits` | `false` | Open the corresponding preconfigured rqt plot; needs diagnostic topics and a desktop. |
+
+The launch also sets `disable_gazebo_torque_limits=true` directly. It is a ROS
+parameter, not a `roslaunch` argument. This simulation configuration is not a
+hardware deployment configuration.
+
+#### Services and initialization
+
+| Service | Request | Result / purpose |
+| --- | --- | --- |
+| `/trajectory_publisher/set_experiment_command` | `x_move`, `y_move`, `z_move` in m; `cbf_active`; positive `Kmax` in J; positive `alpha` | Returns `success`, `applied_pose`, `message`; accepts a new target and CBF settings. Starts recording first when enabled. |
+| `/trajectory_publisher/initialize_joint_pose` | `q`: 7 angles in rad; `duration`: simulated seconds | Moves to a joint configuration without CBF, waits for settling and returns to Cartesian control. |
+| `/directional_cbf_recorder/start` | Empty `std_srvs/Trigger` request | Starts recording manually; repeated calls reuse the same session. |
+| `/controller_manager/list_controllers` | Empty request | Inspect loaded controllers and their states. |
+| `/controller_manager/list_controller_types` | Empty request | Verify available controller plugins. |
+
+For joint initialization, keep Gazebo unpaused and wait until the robot is
+stationary. Example using the standard posture:
+
+```bash
+rosservice call /trajectory_publisher/initialize_joint_pose \
+"q: [0.0, -0.785398163, 0.0, -2.35619449, 0.0, 1.57079632679, 0.785398163397]
+duration: 6.0"
 ```
 
-For the first test, preserve the current quaternion and modify one
-position coordinate by approximately 0.01 m.
+Angles are ordered `fr3_joint1` through `fr3_joint7`. Edit the seven values to
+select another posture without restarting Gazebo. This call is synchronous:
+wait for `success: true` before continuing. It does not start recording. On
+success, the Cartesian target is reset to the measured EE pose and CBF remains
+off until enabled by a new experiment request. Reinitializing to the same `q`
+provides a more repeatable joint starting configuration than reversing an XYZ
+increment. If the duration is too short, use at least the minimum reported by
+the service.
 
-Publish continuously at 10 Hz:
+On failure, inspect the message and controller states, correct the cause and
+retry initialization. Cartesian experiment commands can remain blocked until a
+successful retry. An all-zero `applied_pose` in a failure response is not a
+measured robot pose.
 
-``` bash
-rostopic pub -r 10 \
-  /trajectory_publisher/equilibrium_pose \
-  geometry_msgs/PoseStamped \
-  "{header: {frame_id: 'fr3_link0'},
-    pose: {
-      position: {x: 0.40, y: 0.00, z: 0.50},
-      orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
-    }}"
+```bash
+rosservice call /controller_manager/list_controllers "{}"
+rosservice call /controller_manager/list_controller_types "{}"
 ```
 
-------------------------------------------------------------------------
+The type list must include `effort_controllers/JointTrajectoryController`.
+If missing, install `ros-noetic-joint-trajectory-controller` and restart Gazebo.
 
-# Diagnostics
+Initialization uses these private parameters of `trajectory_publisher`, read at
+node startup. They are not exposed as launch arguments in the current launch:
 
-``` bash
-rostopic list | grep -Ei 'cbf|equilibrium|joint|state'
-rostopic echo /cbf_info
-rqt_plot /cbf_info/h
-rosservice call /controller_manager/list_controllers
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `initialization_joint_margin` | `0.02` rad | Minimum target distance from position bounds. |
+| `initialization_velocity_scale` | `0.2` | Fraction of the URDF velocity limit for the reference. |
+| `initialization_velocity_cap` | `0.5` rad/s | Maximum reference velocity. |
+| `initialization_position_tolerance` | `0.01` rad | Required final position accuracy for every joint. |
+| `initialization_velocity_tolerance` | `0.02` rad/s | Stationary/settled speed threshold for every joint. |
+| `initialization_settle_time` | `0.2` s | Consecutive simulated time within the tolerances. |
+| `initialization_wall_timeout` | `120` s | Wall-clock timeout for the trajectory and, separately, final settling. |
+
+If measured stationary velocity chatter slightly exceeds `0.02 rad/s`, a tested
+adjustment is `0.03 rad/s`. Add this **inside the `trajectory_publisher` node**
+of the launch, install the updated launch and restart it:
+
+```xml
+<param name="initialization_velocity_tolerance" type="double" value="0.03"/>
 ```
 
-For a valid CBF experiment:
+Do not interpret a visually stationary robot as proof that both tolerances are
+met. Read measured `q` and `dq` before relaxing thresholds. Changing these
+startup parameters with `rosparam set` after startup does not update the values
+already held by the node.
 
--   the intended controller is `running`;
--   repeated solver failures are absent;
--   `h` remains non-negative within an understood numerical tolerance;
--   torque and torque-rate limits are respected;
--   communication and collision limits are not violated.
+The checked-in launch still spawns the standard joint configuration, and
+`linear` starts from a fixed Cartesian reference. Merely changing spawn `-J`
+values does not synchronize that reference. Use the initialization service to
+set a different posture and synchronize the target.
 
-------------------------------------------------------------------------
+#### Pausing and recording
 
-# Troubleshooting
+If launched with `paused:=true`, unpause before initialization or recording:
 
-## Abseil reports C++ \< 17
-
-Typical error:
-
-``` text
-The compiler defaults to or is configured for C++ < 17
+```bash
+rosservice call /gazebo/unpause_physics "{}"
 ```
 
-Check active CMake assignments:
+To run without experiment files, replace `record_cbf:=true` with
+`record_cbf:=false` in the launch. `log_dir` is then unused. This does not disable
+live energy topics or ordinary ROS logs.
 
-``` bash
-grep -RIn "CMAKE_CXX_STANDARD" \
-  src/franka_ros/franka_example_controllers \
-  --exclude='*.md' \
-  --exclude='*.sh' \
-  --exclude='*.bat'
+With recording enabled, the first `set_experiment_command` call creates the
+session before forwarding the command. A recording-start failure rejects that
+experiment request. Later experiment calls reuse the same session. To record
+stationary history before the first movement, start manually and wait at least
+one second before sending the experiment:
+
+```bash
+rosservice call /directional_cbf_recorder/start "{}"
 ```
 
-Active source files must use C++17.
+The response contains the session path. There is no recorder pause/stop service.
+Setting `cbf_active: false` keeps core data recording active. End the launch with
+**Ctrl+C** to flush and close the files; relaunch for a new session.
 
-Then remove stale build state:
+## Test in Real robot
 
-``` bash
-rm -rf \
-  src/franka_ros/franka_example_controllers/lib/osqp-cpp/build \
-  build \
-  devel \
-  install
+## Plot data
+
+### Recorded files and fields
+
+The directional recorder creates:
+
+```text
+<log_dir>/experiment_<UTC timestamp>_<ID>/
+    cbf.csv
+    contacts.csv
+    metadata.json
+    robot.urdf
+    health.json
 ```
 
-Rebuild with the complete C++17 command from the installation section.
+The root directory is created automatically. With no `log_dir` argument, it is
+`$HOME/.ros/directional_cbf`. With `log_dir:="$(pwd)/data/cbf"`, the path is based
+on the launching terminal's current directory. No rosbag is created by this
+recorder. `contacts.csv` is created when needed for CBF-active data.
 
-## Missing Abseil libraries
+| Data | When saved |
+| --- | --- |
+| Timestamp, time segment, sample index, experiment ID, controller period | Every received CBF sample after recording starts. |
+| `cbf_h`, `cbf_constraint_safe`, `cbf_constraint_qp`, directional and total kinetic energy | With CBF on or off; unavailable values can be empty/NaN. |
+| `Kmax`, `alpha`, direction, residual tolerance, Jacobian singular values | With CBF on or off. |
+| EE/target positions, distance to requested target and filtered reference | With CBF on or off. |
+| CBF enable/applied flags, solver status, task-abort flag, sample-gap count | With CBF on or off. |
+| `q_1...q_7`, `dq_1...dq_7`, `tau_command_1...tau_command_7`, robot mode | Only with CBF active; check `debug_valid`. Torques are controller commands, not measured Gazebo applied torques. |
+| Contact pairs, forces, penetration and timestamp association | CBF-active intervals, in `contacts.csv`. |
 
-Typical error:
+`metadata.json` describes the columns and joint mapping; `robot.urdf` stores the
+model and limits; `health.json` reports queue drops, sample gaps, unmatched
+contacts and shutdown status. During joint initialization, the stopped Cartesian
+controller does not publish CBF samples, so this CSV is not a complete log of
+the initialization motion. Experiment IDs can therefore skip values.
 
-``` text
-libabsl_*.so: cannot open shared object file
+A `CBF sample-index gaps detected` warning means samples are missing: inspect
+`missing_samples_before` and `health.json`. An empty contacts file is not proof
+of absence of contact. Blank joint columns during CBF-off trials are expected.
+
+### Run the Python script
+
+The repository-root [`plot_directional_cbf.py`](plot_directional_cbf.py) runs
+without ROS, `rosrun`, a Catkin workspace or a ROS environment. Copy it and the
+recording to any machine with Python 3, NumPy and Matplotlib:
+
+```bash
+python3 -m pip install numpy matplotlib
 ```
 
-Fix:
+From the folder containing the script, enter the full **`cbf.csv`** path when
+prompted, without surrounding quotes:
 
-``` bash
-cd ~/Riccardo/franka_ws_013
-cp -a devel/lib/libabsl*.so* install/lib/
-source ~/Riccardo/franka_ws_013/env.sh
-
-ldd install/lib/libfranka_example_controllers.so | grep "not found"
+```bash
+read -r -p "Full path to cbf.csv: " CBF_CSV
+python3 plot_directional_cbf.py "$CBF_CSV" --show
 ```
 
-Expected: no output.
+Do not pass `contacts.csv` as the main input: it lacks the required CBF columns.
+Companion files are discovered beside `cbf.csv`. The CSV alone can be plotted;
+without URDF/metadata, joint bounds may be unavailable, and without contacts,
+contact plots report missing data rather than assuming zero contact.
 
-## Stale SDFormat 9.8 paths
+The version currently checked into this branch saves separate diagnostic figures
+and `--show` opens them. It includes CBF/target-distance panels, joint positions
+with dashed URDF bounds and velocities, joint margins, Jacobian SVD and condition
+ratio, energy/torque, derivative checks, parameters/timing, and contact plots.
+The later motion-aligned comparison script distributed separately is not yet
+part of this branch; options such as `--experiments`, `--pre-motion` and
+`--no-show` are not supported by this checked-in version.
 
-Typical errors:
+To select one experiment and save PDF figures:
 
-``` text
-No rule to make target '/usr/lib/x86_64-linux-gnu/libsdformat9.so.9.8.0'
-fatal error: sdf/sdf.hh: No such file or directory
+```bash
+read -r -p "Experiment ID from cbf.csv: " EXPERIMENT_ID
+python3 plot_directional_cbf.py "$CBF_CSV" \
+  --experiment "$EXPERIMENT_ID" \
+  --output-dir "$(dirname "$CBF_CSV")/plots" \
+  --format pdf \
+  --show
 ```
 
-Inspect installed SDFormat:
+| Option | Usage |
+| --- | --- |
+| Positional CSV path | Required `cbf.csv` input. |
+| `--experiment ID` | Select one experiment; omit to include all. |
+| `--segment ID` | Select a time segment, useful after clock/controller resets. |
+| `--start SECONDS`, `--end SECONDS` | Restrict CSV `time_s`; not time relative to motion onset. |
+| `--output-dir PATH` | Destination folder; default: `plots` beside the CSV. |
+| `--format png\|pdf\|svg` | Output format; default: PNG. |
+| `--show` | Open saved figures interactively; omit for file-only output. |
+| `--urdf PATH` | Override the automatic `robot.urdf` lookup. |
+| `--metadata PATH` | Override `metadata.json`. |
+| `--contacts PATH` | Override `contacts.csv`. |
+| `--arm-id fr3` | Supply the joint-name prefix if metadata is absent/ambiguous. |
+| `--output PATH` | Compatibility option: use the filename as a prefix for figure files. |
 
-``` bash
-pkg-config --modversion sdformat9
-pkg-config --cflags sdformat9
-pkg-config --libs sdformat9
+```bash
+python3 plot_directional_cbf.py --help
 ```
 
-Inspect CMake metadata:
-
-``` bash
-grep -RIn 'libsdformat9' \
-  /usr/lib/x86_64-linux-gnu/cmake/gazebo \
-  /usr/lib/x86_64-linux-gnu/cmake/sdformat9 \
-  2>/dev/null
-```
-
-If system metadata points to the installed version but the workspace
-build refers to 9.8, remove `build`, `devel`, and `install`, then
-rebuild.
-
-If Gazebo injects stale values, apply the `list(REMOVE_ITEM ...)` and
-`sdformat9::sdformat9` fix documented above.
-
-Do not create fake compatibility symlinks for `libsdformat9.so.9.8.0`.
-
-## Wrong libfranka version
-
-Typical symptom:
-
-``` text
-libfranka: Incompatible library version
-```
-
-Check:
-
-``` bash
-source ~/Riccardo/franka_ws_013/env.sh
-
-ldd install/lib/franka_control/franka_control_node | grep libfranka
-ldd install/lib/libfranka_example_controllers.so | grep libfranka
-ldd install/lib/libfranka_hw_sim.so | grep libfranka
-```
-
-All relevant binaries must resolve to the isolated 0.13.3 installation.
-
-## `roslaunch` cannot find a package
-
-``` bash
-source /opt/ros/noetic/setup.bash
-source ~/Riccardo/franka_ws_013/install/setup.bash
-rospack find franka_example_controllers
-```
-
-## `Connection to FCI refused`
-
-Enable FCI in Franka Desk and verify that another process is not already
-connected.
-
-## FR3 resource or joint errors
-
-Use:
-
-``` text
-robot:=fr3
-```
-
-Expected effort resources are `fr3_joint1` through `fr3_joint7`.
-
-## No Franka Hand
-
-Use:
-
-``` text
-load_gripper:=false
-```
-
-## Hold publisher overwrites a manual target
-
-``` bash
-rosnode kill /trajectory_publisher
-```
-
-Do not stop the controller manager or the Cartesian controller.
-
-## QP time-limit warnings
-
-Typical message:
-
-``` text
-QPsolver did not find optimal solution, exit code OsqpExitCode::kTimeLimitReached
-```
-
-Possible causes include an excessively small `Kmax`, infeasible CBF
-constraints, torque or torque-rate saturation, noisy derivatives, poor
-directional mobility, or excessive solver work within the 1 ms control
-period.
-
-Diagnostic sequence:
-
-1.  stop motion;
-2.  restart with `trajectory:=hold`;
-3.  test `cbf_active:=false`;
-4.  enable the CBF with a moderate `Kmax`;
-5.  inspect `/cbf_info`;
-6.  stop if timeouts repeat.
-
-## `rosparam set /Kmax ...` has no effect
-
-Some parameters are read only during controller initialization. Restart
-the controller with a new launch argument unless the parameter is
-connected to a `dynamic_reconfigure` callback.
-
-## Old workspace contaminates the environment
-
-``` bash
-source ~/Riccardo/franka_ws_013/env.sh
-
-echo "$ROS_PACKAGE_PATH" | tr ':' '\n'
-echo "$LD_LIBRARY_PATH" | tr ':' '\n'
-```
-
-Remove old Franka workspace sourcing from `~/.bashrc`.
-
-## Clean rebuild
-
-``` bash
-cd ~/Riccardo/franka_ws_013
-source /opt/ros/noetic/setup.bash
-
-export CC=/usr/bin/gcc-10
-export CXX=/usr/bin/g++-10
-export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
-
-rm -rf \
-  src/franka_ros/franka_example_controllers/lib/osqp-cpp/build \
-  build \
-  devel \
-  install
-
-catkin_make install \
-  -DCMAKE_C_COMPILER=/usr/bin/gcc-10 \
-  -DCMAKE_CXX_COMPILER=/usr/bin/g++-10 \
-  -DCMAKE_CXX_STANDARD=17 \
-  -DCMAKE_CXX_STANDARD_REQUIRED=ON \
-  -DCMAKE_CXX_EXTENSIONS=OFF \
-  -DABSL_PROPAGATE_CXX_STD=ON \
-  -DABSL_BUILD_TESTING=OFF \
-  -DOSQP-CPP_BUILD_TESTS=OFF \
-  -DCMAKE_PREFIX_PATH="$FRANKA_013_PREFIX;/opt/ros/noetic" \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCATKIN_ENABLE_TESTING=OFF
-
-cp -a devel/lib/libabsl*.so* install/lib/
-```
-
-## Rosbag output path
-
-Keep recording disabled during initial tests:
-
-``` text
-rosbag:=false
-```
-
-Find hard-coded paths:
-
-``` bash
-grep -R "/home/" -n \
-  ~/Riccardo/franka_ws_013/src/franka_ros/franka_example_controllers/launch
-```
-
-Create a local output directory before enabling recording:
-
-``` bash
-mkdir -p ~/Riccardo/Rundata
-```
-
-------------------------------------------------------------------------
-
-# Development workflow
-
-After changing sources, messages, dynamic-reconfigure files, launch
-files, or dependency CMake files:
-
-``` bash
-cd ~/Riccardo/franka_ws_013
-source /opt/ros/noetic/setup.bash
-
-export CC=/usr/bin/gcc-10
-export CXX=/usr/bin/g++-10
-export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
-
-catkin_make install \
-  -DCMAKE_C_COMPILER=/usr/bin/gcc-10 \
-  -DCMAKE_CXX_COMPILER=/usr/bin/g++-10 \
-  -DCMAKE_CXX_STANDARD=17 \
-  -DCMAKE_CXX_STANDARD_REQUIRED=ON \
-  -DCMAKE_CXX_EXTENSIONS=OFF \
-  -DABSL_PROPAGATE_CXX_STD=ON \
-  -DABSL_BUILD_TESTING=OFF \
-  -DOSQP-CPP_BUILD_TESTS=OFF \
-  -DCMAKE_PREFIX_PATH="$FRANKA_013_PREFIX;/opt/ros/noetic" \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCATKIN_ENABLE_TESTING=OFF
-
-cp -a devel/lib/libabsl*.so* install/lib/
-source ~/Riccardo/franka_ws_013/env.sh
-```
-
-Verify plugin registration:
-
-``` bash
-rospack plugins --attrib=plugin controller_interface \
-  | grep franka_example_controllers
-```
-
-Verify installed libraries:
-
-``` bash
-ls -l install/lib/libfranka_example_controllers.so
-ls -l install/lib/libfranka_hw_sim.so
-```
+Check both the measured energy against `Kmax` and the CBF residual against its
+numerical tolerance. A nonnegative model residual alone does not establish
+that the measured energy stayed below threshold. Review tracking error, joint
+limits, contact data and recording gaps alongside the energy plot.
