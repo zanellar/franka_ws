@@ -1,0 +1,9 @@
+# Gazebo only. q is ordered arm_id_joint1 ... arm_id_joint7, in radians.
+float64[7] q
+# Requested trajectory duration in simulation seconds (minimum 2 seconds).
+float64 duration
+---
+bool success
+# Measured pose in the robot base frame. Valid only on success.
+geometry_msgs/Pose applied_pose
+string message

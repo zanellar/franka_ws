@@ -1,5 +1,7 @@
 #include <cmath>
 #include <mutex>
+#include <memory>
+#include <stdexcept>
 #include <string>
 
 #include <dynamic_reconfigure/BoolParameter.h>
@@ -10,6 +12,7 @@
 #include <std_srvs/Trigger.h>
 
 #include <franka_trajectory/SetLinearCommand.h>
+#include <franka_trajectory/joint_initializer.h>
 #include <franka_msgs/StartDirectionalExperiment.h>
 
 class LinearTrajectory {
@@ -27,6 +30,10 @@ class LinearTrajectory {
     target_pose_.pose.orientation.z = 0.0;
 
     private_node_handle_.param("publish_rate", publish_rate_, 100.0);
+    private_node_handle_.param("enable_joint_initialization", joint_initialization_enabled_, false);
+    std::string arm_id;
+    private_node_handle_.param<std::string>("arm_id", arm_id, "fr3");
+    base_frame_ = arm_id + "_link0";
 
     pose_publisher_ =
         private_node_handle_.advertise<geometry_msgs::PoseStamped>(
@@ -62,6 +69,11 @@ class LinearTrajectory {
           recording_start_service_);
     }
 
+    joint_initializer_.reset(new franka_trajectory::JointInitializer(
+        root_node_handle_, private_node_handle_, directional_experiment_service_));
+    initialization_service_ = private_node_handle_.advertiseService(
+        "initialize_joint_pose", &LinearTrajectory::initializeCallback, this);
+
     ROS_INFO_STREAM(
         "Linear trajectory ready. Command service: "
         << private_node_handle_.resolveName("set_experiment_command"));
@@ -72,7 +84,8 @@ class LinearTrajectory {
   }
 
   void run() {
-    ros::Rate rate(publish_rate_);
+    // Keep service callbacks available even when the simulated clock is paused.
+    ros::WallRate rate(publish_rate_);
 
     while (ros::ok()) {
       geometry_msgs::PoseStamped pose_to_publish;
@@ -80,11 +93,11 @@ class LinearTrajectory {
       {
         std::lock_guard<std::mutex> lock(target_mutex_);
         target_pose_.header.stamp = ros::Time::now();
-        target_pose_.header.frame_id = "fr3_link0";
+        target_pose_.header.frame_id = base_frame_;
         pose_to_publish = target_pose_;
       }
 
-      pose_publisher_.publish(pose_to_publish);
+      if (reference_ready_) pose_publisher_.publish(pose_to_publish);
 
       ros::spinOnce();
       rate.sleep();
@@ -92,10 +105,28 @@ class LinearTrajectory {
   }
 
  private:
+  bool initializeCallback(franka_trajectory::InitializeJointPose::Request& request,
+                          franka_trajectory::InitializeJointPose::Response& response) {
+    // spinOnce serializes services with publication. The action client spins its
+    // own queue and the initializer services a separate Franka-state queue.
+    // No old equilibrium pose is published during this blocking transaction.
+    std::lock_guard<std::mutex> lock(target_mutex_);
+    const bool result = joint_initializer_->initialize(request, response,
+        target_pose_.pose, reference_ready_);
+    if (response.success) target_pose_.header.stamp = ros::Time::now();
+    return result;
+  }
+
   bool commandCallback(
       franka_trajectory::SetLinearCommand::Request& request,
       franka_trajectory::SetLinearCommand::Response& response) {
+    if (!reference_ready_) {
+      response.success = false;
+      response.message = "Cartesian reference unavailable after initialization failure; retry initialize_joint_pose";
+      return true;
+    }
     if (!std::isfinite(request.x_move) ||
+        !std::isfinite(request.y_move) || !std::isfinite(request.z_move) ||
         !std::isfinite(request.Kmax) ||
         !std::isfinite(request.alpha)) {
       response.success = false;
@@ -112,6 +143,23 @@ class LinearTrajectory {
     if (request.alpha <= 0.0) {
       response.success = false;
       response.message = "alpha must be strictly positive.";
+      return true;
+    }
+
+    geometry_msgs::Pose requested_pose;
+    {
+      std::lock_guard<std::mutex> lock(target_mutex_);
+      requested_pose = target_pose_.pose;
+    }
+    try {
+      franka_trajectory::addCartesianDisplacement(
+          requested_pose.position.x, requested_pose.position.y, requested_pose.position.z,
+          request.x_move, request.y_move, request.z_move);
+      if (joint_initialization_enabled_ && !joint_initializer_->cartesianRunning())
+        throw std::runtime_error("Cartesian controller is not running; initialize joints before sending an experiment");
+    } catch (const std::exception& error) {
+      response.success = false;
+      response.message = error.what();
       return true;
     }
 
@@ -132,11 +180,7 @@ class LinearTrajectory {
     // Its abort latch is cleared only by this explicit experiment request.
     if (!directional_experiment_service_.empty()) {
       franka_msgs::StartDirectionalExperiment command;
-      {
-        std::lock_guard<std::mutex> lock(target_mutex_);
-        command.request.target = target_pose_.pose;
-      }
-      command.request.target.position.x += request.x_move;
+      command.request.target = requested_pose;
       command.request.cbf_active = request.cbf_active;
       command.request.Kmax = request.Kmax;
       command.request.alpha = request.alpha;
@@ -190,7 +234,7 @@ class LinearTrajectory {
     {
       std::lock_guard<std::mutex> lock(target_mutex_);
 
-      target_pose_.pose.position.x += request.x_move;
+      target_pose_.pose = requested_pose;
       target_pose_.header.stamp = ros::Time::now();
 
       response.applied_pose = target_pose_.pose;
@@ -202,6 +246,7 @@ class LinearTrajectory {
     ROS_INFO_STREAM(
         "Experiment command applied:"
         << " x_move=" << request.x_move
+        << ", y_move=" << request.y_move << ", z_move=" << request.z_move
         << ", target_x=" << response.applied_pose.position.x
         << ", cbf_active=" << std::boolalpha << request.cbf_active
         << ", Kmax=" << request.Kmax
@@ -215,6 +260,11 @@ class LinearTrajectory {
 
   ros::Publisher pose_publisher_;
   ros::ServiceServer command_service_;
+  ros::ServiceServer initialization_service_;
+  std::unique_ptr<franka_trajectory::JointInitializer> joint_initializer_;
+  bool joint_initialization_enabled_{false};
+  bool reference_ready_{true};
+  std::string base_frame_;
   ros::ServiceClient dynamic_reconfigure_client_;
   ros::ServiceClient directional_experiment_client_;
   ros::ServiceClient recording_client_;

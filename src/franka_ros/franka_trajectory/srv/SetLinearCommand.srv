@@ -1,4 +1,8 @@
+# Displacement from the previous commanded target, in the robot base frame [m].
+# After successful joint initialization, that target is the measured EE pose.
 float64 x_move
+float64 y_move
+float64 z_move
 bool cbf_active
 float64 Kmax
 float64 alpha

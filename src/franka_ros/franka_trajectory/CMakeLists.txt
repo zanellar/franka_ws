@@ -5,6 +5,12 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(catkin REQUIRED COMPONENTS
+  actionlib
+  control_msgs
+  controller_manager_msgs
+  tf2
+  trajectory_msgs
+  urdf
   dynamic_reconfigure
   franka_msgs
   geometry_msgs
@@ -16,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
   FILES
   SetLinearCommand.srv
+  InitializeJointPose.srv
 )
 
 generate_messages(
@@ -33,6 +40,12 @@ list_insert_in_workspace_order(catkin_INCLUDE_DIRS ${Franka_INCLUDE_DIRS} ${catk
 
 catkin_package(
   CATKIN_DEPENDS
+    actionlib
+    control_msgs
+    controller_manager_msgs
+    tf2
+    trajectory_msgs
+    urdf
     dynamic_reconfigure
     franka_msgs
     geometry_msgs
@@ -51,6 +64,7 @@ foreach(executable ${EXECUTABLES})
     ${${PROJECT_NAME}_EXPORTED_TARGETS}
     ${catkin_EXPORTED_TARGETS}
   )
+  target_include_directories(${executable} PRIVATE include)
   target_include_directories(${executable} SYSTEM PUBLIC
     ${catkin_INCLUDE_DIRS}
   )
@@ -59,6 +73,13 @@ foreach(executable ${EXECUTABLES})
     ${catkin_LIBRARIES}
   )
 endforeach()
+target_sources(linear PRIVATE src/joint_initializer.cpp)
+
+if(CATKIN_ENABLE_TESTING)
+  add_executable(initialization_policy_test test/initialization_policy_test.cpp)
+  target_include_directories(initialization_policy_test PRIVATE include)
+  add_test(NAME initialization_policy_test COMMAND initialization_policy_test)
+endif()
 message(STATUS "Looking for trajectories")
 ## Installation
 install(TARGETS ${EXECUTABLES}

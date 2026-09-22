@@ -55,6 +55,8 @@
   <arg name="start_trajectory" default="false"/>
   <arg name="trajectory" default="hold"/>
   <arg name="publish_rate" default="100"/>
+  <!-- Joint initialization is implemented by linear; other trajectories ignore it. -->
+  <arg name="enable_joint_initialization" default="true"/>
 
   <!-- Global parameters read by the directional CBF controller -->
   <param name="alpha"
@@ -193,6 +195,11 @@
 
   <param name="publish_rate"
          value="$(arg publish_rate)"/>
+  <param name="arm_id" value="$(arg arm_id)"/>
+  <param name="enable_joint_initialization" value="$(arg enable_joint_initialization)"/>
+  <param name="joint_trajectory_controller" value="effort_joint_trajectory_controller"/>
+  <param name="cartesian_controller"
+         value="cartesian_impedance_directional_kinetic_energy_cbf_controller"/>
     <param name="recording_start_service" value="/directional_cbf_recorder/start"
            if="$(arg record_cbf)"/>
     <param name="recording_start_service" value="" unless="$(arg record_cbf)"/>
