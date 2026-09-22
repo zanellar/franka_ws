@@ -6,6 +6,15 @@
   <arg name="arm_id" default="$(arg robot)"/>
   <arg name="use_gripper" default="false"/>
 
+  <!-- Live joint-position margins; GUI is opt-in, including on headless runs. -->
+  <arg name="joint_limit_diagnostics" default="true"/>
+  <arg name="plot_joint_limits" default="false"/>
+  <include file="$(find franka_example_controllers)/launch/joint_limit_diagnostics.launch">
+    <arg name="arm_id" value="$(arg arm_id)"/>
+    <arg name="joint_limit_diagnostics" value="$(arg joint_limit_diagnostics)"/>
+    <arg name="plot_joint_limits" value="$(arg plot_joint_limits)"/>
+  </include>
+
   <!-- Subscribers are armed at launch; files open on the first experiment request. -->
   <arg name="record_cbf" default="true"/>
   <arg name="state_publish_rate" default="1000"/>

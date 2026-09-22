@@ -185,6 +185,8 @@ catkin_install_python(
     scripts/interactive_marker.py
     scripts/record_directional_cbf.py
     scripts/plot_directional_cbf.py
+    scripts/joint_limit_diagnostics.py
+    scripts/plot_joint_limits.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

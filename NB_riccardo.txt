@@ -80,8 +80,25 @@ direction_x:=1.0 \
 direction_y:=0.0 \
 direction_z:=0.0 \
 headless:=false \
-rviz:=false
-log_dir:="/home/patrickkoehorst24/Riccardo/franka_ws_013/data"
+rviz:=false \
+log_dir:="/home/patrickkoehorst24/Riccardo/franka_ws_013/data" 
+
+[FOR JOINT LIMIT DIAGNOSTICS]
+roslaunch franka_example_controllers \
+cartesian_impedance_directional_kinetic_energy_cbf_controller_gazebo.launch \
+trajectory:=linear \
+start_trajectory:=true \
+cbf_active:=false \
+Kmax:=20.0 \
+alpha:=1.0 \
+direction_x:=1.0 \
+direction_y:=0.0 \
+direction_z:=0.0 \
+headless:=false \
+rviz:=false \
+log_dir:="/home/patrickkoehorst24/Riccardo/franka_ws_013/data" 
+joint_limit_diagnostics:=true \
+plot_joint_limits:=true
 
 ------------------------------------------
 
@@ -117,6 +134,6 @@ rosservice call  \
  "x_move: 0.20
 cbf_active: true
 Kmax: 0.05
-alpha: 0.1"
+alpha: 1"
 
 

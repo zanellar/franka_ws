@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="arm_id" default="fr3"/>
+  <arg name="joint_limit_diagnostics" default="true"/>
+  <arg name="plot_joint_limits" default="false"/>
+  <arg name="joint_states_topic" default="/franka_state_controller/joint_states"/>
+  <arg name="robot_description_param" default="/robot_description"/>
+
+  <!-- A plot request also enables its data source. Independent of CBF/CSV triggers. -->
+  <node pkg="franka_example_controllers" type="joint_limit_diagnostics.py"
+        name="joint_limit_diagnostics" output="screen" required="false"
+        if="$(eval arg('joint_limit_diagnostics') or arg('plot_joint_limits'))">
+    <param name="arm_id" value="$(arg arm_id)"/>
+    <param name="joint_states_topic" value="$(arg joint_states_topic)"/>
+    <param name="robot_description_param" value="$(arg robot_description_param)"/>
+  </node>
+
+  <!-- Selects curves dynamically, after publishers and the first state exist. -->
+  <node pkg="franka_example_controllers" type="plot_joint_limits.py"
+        name="plot_joint_limits" output="screen" required="false" respawn="false"
+        if="$(arg plot_joint_limits)">
+    <param name="diagnostics_node" value="joint_limit_diagnostics"/>
+  </node>
+</launch>
