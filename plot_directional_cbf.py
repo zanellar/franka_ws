@@ -4,6 +4,9 @@
 python3 plot_directional_cbf.py /path/to/cbf.csv --show
 python3 plot_directional_cbf.py /path/to/cbf.csv --experiments 2 4 --format pdf
 
+The comparison includes every detected movement: CBF off and CBF on for each
+recorded alpha (e.g. 1, 5, 10). Alpha is read from the CSV, not inferred from
+experiment IDs or sequence. Repeated trials remain separate curves.
 Only the distance/energy comparison is displayed. All individual diagnostic
 figures are always saved in the plots/ directory beside the CSV. --no-show
 saves without opening a window. No ROS, workspace, URDF or metadata is required.
@@ -456,11 +459,15 @@ def detect_motion(data, args):
 def motion_trials(all_data, args):
     trials = []
     allowed = [args.experiment] if args.experiment is not None else args.experiments
+    # Keep parameter changes separate even if an experiment ID is reused.
+    alpha = col(all_data, 'alpha')
+    alpha_changed = (alpha[1:] != alpha[:-1]) & ~(np.isnan(alpha[1:]) & np.isnan(alpha[:-1]))
     # Boundaries are positional, including repeated IDs after controller resets.
     boundaries = np.r_[0, np.flatnonzero(
         (np.diff(all_data['experiment_id']) != 0) |
         (np.diff(all_data['time_segment']) != 0) |
-        (np.diff(all_data['cbf_active']) != 0)) + 1, len(all_data['time_s'])]
+        (np.diff(all_data['cbf_active']) != 0) | alpha_changed |
+        (np.diff(all_data['Kmax']) != 0)) + 1, len(all_data['time_s'])]
     for left, right in zip(boundaries[:-1], boundaries[1:]):
         segment = int(all_data['time_segment'][left])
         experiment = int(all_data['experiment_id'][left])
@@ -517,10 +524,13 @@ def motion_trials(all_data, args):
         available_pre = info['onset'] - view['time_s'][0]
         available_post = None if info['stop'] is None else view['time_s'][-1] - info['stop']
         info.update(segment=segment, experiment=experiment, cbf_active=active,
+                    alpha=float(alpha[left]) if np.isfinite(alpha[left]) else None,
+                    Kmax=float(run['Kmax'][0]),
                     origin=origin, first_recorded=float(view['time_s'][0]),
                     last_recorded=float(view['time_s'][-1]),
                     available_pre_seconds=float(available_pre),
                     available_post_seconds=None if available_post is None else float(available_post))
+        print('  Parameters: alpha={}, Kmax={} J'.format(info['alpha'], info['Kmax']))
         print('Experiment {} (CBF {}): onset {:.3f} s, stop {}, pre {:.3f} s, post {}.'.format(
             experiment, 'on' if active else 'off', info['onset'],
             'not confirmed' if info['stop'] is None else '{:.3f} s'.format(info['stop']),
@@ -540,21 +550,40 @@ def motion_trials(all_data, args):
 
 def comparison_figure(plt, trials):
     fig, axes = plt.subplots(2, 1, sharex=True, figsize=(7.2, 12.8), constrained_layout=True)
-    colors = {0: '#c74740', 1: '#22864f'}
+    # Stable colors for the requested sweep, regardless of ordering/subselection.
+    known_colors = {1.0: '#22864f', 5.0: '#2468b4', 10.0: '#8b4ca5'}
+    other_alphas = sorted({info.get('alpha') for info, _ in trials
+                           if info['cbf_active'] and info.get('alpha') is not None
+                           and info['alpha'] not in known_colors})
+    extra_colors = plt.get_cmap('tab20')
+    colors = dict(known_colors)
+    colors.update({alpha: extra_colors(i % 20) for i, alpha in enumerate(other_alphas)})
     styles = ['-', '--', '-.', ':']
-    counts = {0: 0, 1: 0}
+    counts = {}
+    # Draw only one threshold when all compared requests use the same Kmax.
+    limits = [data['Kmax'][np.isfinite(data['Kmax'])] for _, data in trials]
+    finite_limits = np.concatenate(limits)
+    common_limit = (float(finite_limits[0]) if len(finite_limits) and
+                    np.all(finite_limits == finite_limits[0]) else None)
     for info, data in trials:
-        active = info['cbf_active']; style = styles[counts[active] % len(styles)]
-        counts[active] += 1
-        label = 'CBF {} - experiment {}'.format('on' if active else 'off', info['experiment'])
+        active, alpha = info['cbf_active'], info.get('alpha')
+        group = (active, alpha if active else None)
+        repeat = counts.get(group, 0)
+        counts[group] = repeat + 1
+        color = colors.get(alpha, '#777777') if active else '#c74740'
+        label = ('CBF on, alpha = {}'.format(format(alpha, 'g') if alpha is not None else 'unavailable')
+                 if active else 'CBF off')
+        label += ' (exp {}, segment {})'.format(info['experiment'], info['segment'])
+        if repeat:
+            label += ' / repeat {}'.format(repeat + 1)
         for ax, key in zip(axes, ('ee_target_distance', 'kinetic_energy_dir')):
-            line(ax, data, col(data, key), label, color=colors[active], ls=style)
-        line(axes[1], data, data['Kmax'], 'Kmax - experiment {}'.format(info['experiment']),
-             color=colors[active], ls=':', drawstyle='steps-post')
-    # Make each threshold visibly dashed, even when both trials share Kmax.
-    for curve in axes[1].lines:
-        if curve.get_label().startswith('Kmax'):
-            curve.set_linestyle('--')
+            line(ax, data, col(data, key), label, color=color, ls=styles[repeat % len(styles)])
+        if common_limit is None:
+            line(axes[1], data, data['Kmax'], 'Kmax: ' + label,
+                 color=color, ls='--', drawstyle='steps-post')
+    if common_limit is not None:
+        axes[1].axhline(common_limit, color='black', ls='--', lw=1,
+                       label='Kmax = {:g} J'.format(common_limit))
     onset = trials[0][0]['onset']-trials[0][0]['origin']
     for ax in axes:
         ax.axvline(onset, color='gray', ls=':', lw=.8, label='Detected motion onset')
@@ -567,7 +596,7 @@ def comparison_figure(plt, trials):
     axes[1].set_title('Directional kinetic energy')
     axes[1].set_ylabel('Energy [J]')
     axes[1].set_xlabel('Aligned time [s] (motion onset at {:.2f} s)'.format(onset))
-    fig.suptitle('CBF off / on comparison', fontsize=13)
+    fig.suptitle('CBF off / on - alpha comparison', fontsize=13)
     return fig
 
 
@@ -704,3 +733,4 @@ if __name__ == '__main__':
         main()
     except (OSError, ValueError, KeyError, ET.ParseError) as error:
         sys.exit('Plot failed: {}'.format(error))
+
