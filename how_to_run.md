@@ -173,7 +173,7 @@ rosservice call /trajectory_publisher/initialize_joint_pose \
 duration: 12.0"
 ```
 
-**Forward, CBF on:**
+**Forward, CBF on, 1st alpha:**
 
 ```bash
 rosservice call /trajectory_publisher/set_experiment_command \
@@ -183,6 +183,46 @@ z_move: 0.0
 cbf_active: true
 Kmax: 0.02
 alpha: 1.0"
+```
+
+**Initial Configuration**
+
+```bash
+rosservice call /trajectory_publisher/initialize_joint_pose \
+"q: [0.0, -0.2, 0.0, -2.2, 0.0, 3.2, 0.785398163397]
+duration: 12.0"
+```
+
+**Forward, CBF on, 2nd alpha::**
+
+```bash
+rosservice call /trajectory_publisher/set_experiment_command \
+"x_move: 0.1
+y_move: 0.2
+z_move: 0.0
+cbf_active: true
+Kmax: 0.02
+alpha: 5.0"
+```
+
+**Initial Configuration**
+
+```bash
+rosservice call /trajectory_publisher/initialize_joint_pose \
+"q: [0.0, -0.2, 0.0, -2.2, 0.0, 3.2, 0.785398163397]
+duration: 12.0"
+```
+
+**Forward, CBF on, 3rd alpha::**
+
+```bash
+rosservice call /trajectory_publisher/set_experiment_command \
+"x_move: 0.1
+y_move: 0.2
+z_move: 0.0
+cbf_active: true
+Kmax: 0.02
+alpha: 10.0"
 ```
 
 ## Find Good Trajectory

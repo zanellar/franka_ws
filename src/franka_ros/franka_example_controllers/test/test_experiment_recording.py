@@ -61,7 +61,8 @@ class RecordingTests(unittest.TestCase):
         ros.loginfo = ros.logerr = ros.logwarn_throttle = lambda *a, **kw: None
         modules['rospy'] = ros
         for name, classes in {
-            'franka_msgs.msg': ['DirectionalCbfDiagnostics'],
+            'franka_msgs.msg': ['DirectionalCbfDiagnostics', 'FrankaState'],
+            'std_msgs.msg': ['String'],
             'gazebo_msgs.msg': ['ContactsState'], 'std_srvs.srv': ['Trigger', 'TriggerResponse'],
         }.items():
             module = types.ModuleType(name)
@@ -219,6 +220,43 @@ class RecordingTests(unittest.TestCase):
         self.instance.receive(message(), '/directional_cbf/diagnostics')
         self.instance.receive(message(2), '/directional_cbf/diagnostics')
         self.assertEqual(self.instance.dropped['/directional_cbf/diagnostics'], 1)
+
+
+    def test_real_records_off_state_and_initialization_without_fake_contacts(self):
+        self.instance.close_files()
+        self.params['~runtime_environment']='real'
+        self.instance=recorder.ExperimentRecorder()
+        self.ready()
+        self.assertTrue(self.instance.start(None).success)
+        diag=message(active=False)
+        for field in recorder.HARDWARE_FIELDS[:5]:
+            setattr(diag, field, 1.)
+        diag.debug_valid=True
+        diag.tau_J_d=[.4]*7; diag.tau_J=[.5]*7; diag.tau_predicted=[.6]*7
+        self.instance.receive(diag, '/directional_cbf/diagnostics')
+        self.instance.receive_phase(types.SimpleNamespace(data='initializing'))
+        state=types.SimpleNamespace(header=diag.header, robot_mode=2,
+                                    control_command_success_rate=1.)
+        class Errors:
+            __slots__=('joint_reflex',)
+            def __init__(self): self.joint_reflex=False
+        state.current_errors=Errors(); state.last_motion_errors=Errors()
+        for name, size in recorder.STATE_ARRAYS.items(): setattr(state, name, [.1]*size)
+        for name in ('m_ee', 'm_load', 'm_total'): setattr(state, name, 0.)
+        for name in ('F_x_Cee','I_ee','F_x_Cload','I_load','F_x_Ctotal','I_total',
+                     'F_T_EE','F_T_NE','NE_T_EE','EE_T_K'): setattr(state, name, [0.])
+        self.instance.receive(state, '/franka_state_controller/franka_states')
+        self.instance.receive_phase(types.SimpleNamespace(data='ready'))
+        self.close_session()
+        row=self.rows('cbf.csv')[0]
+        self.assertEqual(row['debug_valid'], '1')
+        self.assertEqual(row['cbf_active'], '0')
+        self.assertEqual(row['tau_J_d_7'], '0.4')
+        self.assertEqual(len(self.rows('robot_state.csv')), 1)
+        self.assertEqual([r['phase'] for r in self.rows('events.csv')], ['initializing','ready'])
+        self.assertFalse((self.instance.session/'contacts.csv').exists())
+        self.assertTrue((self.instance.session/'robot_model_state.json').exists())
+        self.assertNotIn(None, row)
 
 
 if __name__ == '__main__':

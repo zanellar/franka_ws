@@ -60,6 +60,11 @@ int main() {
   assert(minimumJointDuration(home,home,bounds,.2,.5)==2.0);
   throws([&] { minimumJointDuration(home,target,bounds,0,.5); });
   throws([&] { minimumJointDuration(home,target,bounds,.2,0); });
+  const double hardware_duration=hardwareJointDuration(home,target,.5,1.0);
+  assert(hardware_duration>=std::sqrt((10/std::sqrt(3.0))/.5));
+  assert(hardware_duration>=std::cbrt(60.0));
+  throws([&] { hardwareJointDuration(home,target,0,1); });
+  throws([&] { hardwareJointDuration(home,target,.5,0); });
   std::array<double,7> dq{};
   assert(atRest(dq,.02));
   dq[5]=-.03; assert(!atRest(dq,.02));

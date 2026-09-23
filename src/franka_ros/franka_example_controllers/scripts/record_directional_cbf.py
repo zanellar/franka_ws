@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Triggered CBF CSV with timestamped debug only while CBF is active."""
+"""Triggered CBF CSV; hardware state remains recorded across controller switches."""
 import csv
 import math
 from bisect import bisect_right
@@ -72,6 +72,25 @@ CONTACT_FIELDS = [
     'force_x', 'force_y', 'force_z', 'torque_x', 'torque_y', 'torque_z',
     'max_point_force_norm',
 ]
+
+
+HARDWARE_FIELDS = ['runtime_environment', 'qp_time_us', 'update_time_us',
+                   'torque_prediction_error', 'control_command_success_rate'] + [
+    '{}_{}'.format(name, i) for name in ('tau_J_d', 'tau_J', 'tau_predicted') for i in range(1, 8)]
+STATE_ARRAYS = {'q': 7, 'dq': 7, 'tau_J': 7, 'tau_J_d': 7, 'tau_ext_hat_filtered': 7,
+                'O_F_ext_hat_K': 6, 'joint_contact': 7, 'joint_collision': 7,
+                'cartesian_contact': 6, 'cartesian_collision': 6, 'O_T_EE': 16}
+STATE_FIELDS = ['stamp_ns', 'received_ros_ns', 'robot_mode', 'control_command_success_rate',
+                'current_errors', 'last_motion_errors'] + [
+    '{}_{}'.format(name, i) for name, size in STATE_ARRAYS.items() for i in range(1, size+1)]
+
+
+def error_names(errors):
+    return ';'.join(name for name in errors.__slots__ if getattr(errors, name))
+
+
+def hardware_row(msg):
+    return [getattr(msg, field) for field in HARDWARE_FIELDS[:5]] + list(msg.tau_J_d) + list(msg.tau_J) + list(msg.tau_predicted)
 
 
 class ContactGate:
@@ -149,9 +168,16 @@ class ExperimentRecorder:
     def __init__(self):
         import rospy
         from franka_msgs.msg import DirectionalCbfDiagnostics
-        from gazebo_msgs.msg import ContactsState
         from std_srvs.srv import Trigger, TriggerResponse
         self.ros = rospy
+        environment=rospy.get_param('~runtime_environment', 'gazebo')
+        if environment not in ('gazebo', 'real'):
+            raise ValueError('runtime_environment must be gazebo or real')
+        self.real_robot = environment == 'real'
+        self.state_stream = self.event_stream = None
+        self.state_sequence_gaps = 0
+        self.previous_state_seq = None
+        self.have_robot_metadata = False
         self.response_type = TriggerResponse
         self.lock = threading.RLock()
         capacity = int(rospy.get_param('~queue_capacity', 20000))
@@ -176,14 +202,35 @@ class ExperimentRecorder:
         self.converter = CsvRows()
         self.last_cbf_active = False
         self.gate = ContactGate(self.write_contacts)
-        self.topics = [('/directional_cbf/diagnostics', DirectionalCbfDiagnostics),
-                       ('/directional_cbf/contacts', ContactsState)]
+        self.topics = [('/directional_cbf/diagnostics', DirectionalCbfDiagnostics)]
+        if self.real_robot:
+            from franka_msgs.msg import FrankaState
+            self.topics.append(('/franka_state_controller/franka_states', FrankaState))
+        else:
+            from gazebo_msgs.msg import ContactsState
+            self.topics.append(('/directional_cbf/contacts', ContactsState))
         self.subscribers = [rospy.Subscriber(
             topic, msg_type, self.receive, callback_args=topic,
             queue_size=5000, buff_size=8 * 1024 * 1024, tcp_nodelay=True)
             for topic, msg_type in self.topics]
+        if self.real_robot:
+            from std_msgs.msg import String
+            self.subscribers.append(rospy.Subscriber('/directional_cbf/phase', String,
+                self.receive_phase, queue_size=100, tcp_nodelay=True))
         self.service = rospy.Service('~start', Trigger, self.start)
         rospy.loginfo('CSV recorder armed: waiting for the first set_experiment_command.')
+
+    def receive_phase(self, msg):
+        # Events have reception stamps, not a claimed synchronous controller stamp.
+        with self.lock:
+            if not self.active or self.stopping:
+                return
+            try:
+                self.pending.put_nowait(('/directional_cbf/phase',
+                    (self.ros.Time.now().to_nsec(), time.monotonic_ns(), msg.data)))
+            except queue.Full:
+                topic='/directional_cbf/phase'
+                self.dropped[topic]=self.dropped.get(topic, 0)+1
 
     def receive(self, msg, topic):
         with self.lock:
@@ -195,7 +242,8 @@ class ExperimentRecorder:
                     return
                 self.admitted.add(topic)
             try:
-                self.pending.put_nowait((topic, msg))
+                payload=(msg, self.ros.Time.now().to_nsec()) if topic == '/franka_state_controller/franka_states' else msg
+                self.pending.put_nowait((topic, payload))
             except queue.Full:
                 self.dropped[topic] = self.dropped.get(topic, 0) + 1
                 self.ros.logwarn_throttle(2.0, 'CSV queue full: samples lost; see health.json')
@@ -207,7 +255,7 @@ class ExperimentRecorder:
             if self.active:
                 return self.response_type(True, 'Already recording: ' + str(self.session))
             if time.monotonic() - self.seen.get('/directional_cbf/diagnostics', -float('inf')) > 2.0:
-                return self.response_type(False, 'No recent CBF diagnostics. Unpause Gazebo and retry.')
+                return self.response_type(False, 'No recent CBF diagnostics. Check running controller and clock.')
             try:
                 urdf = self.ros.get_param('/robot_description')
                 tree = ET.fromstring(urdf)
@@ -243,7 +291,32 @@ class ExperimentRecorder:
                 (self.session / 'metadata.json').write_text(json.dumps(metadata, indent=2))
                 self.stream = (self.session / 'cbf.csv').open('x', newline='')
                 self.writer = csv.writer(self.stream)
-                self.writer.writerow(FIELDS + DEBUG_FIELDS)
+                self.writer.writerow(FIELDS + DEBUG_FIELDS + (HARDWARE_FIELDS if self.real_robot else []))
+                if self.real_robot:
+                    metadata.update({
+                        'runtime_environment': 'real', 'hardware_fields': HARDWARE_FIELDS,
+                        'global_cbf_parameters': {key: self.ros.get_param('/'+key, None) for key in
+                            ('direction_x', 'direction_y', 'direction_z', 'damping_ratio', 'mobility_epsilon')},
+                        'state_fields': STATE_FIELDS,
+                        'franka_control': self.ros.get_param('/franka_control', {}),
+                        'controller_parameters': self.ros.get_param(
+                            '/cartesian_impedance_directional_kinetic_energy_cbf_controller', {}),
+                        'trajectory_parameters': self.ros.get_param('/trajectory_publisher', {}),
+                        'note': 'CBF core plus joint debug recorded with CBF on AND off. '
+                                'No contacts.csv on hardware. robot_state.csv continues during joint '
+                                'initialization while CBF diagnostics stop. Events use reception time. '
+                                'tau_predicted is a NEXT-cycle desired-torque prediction; compare '
+                                'with next tau_J_d. tau_J includes gravity. Force estimates/contact '
+                                'flags are libfranka signals, not Gazebo contact wrenches. '
+                                'No CBF guarantee is claimed during initialization or aborted braking.',
+                    })
+                    (self.session / 'metadata.json').write_text(json.dumps(metadata, indent=2))
+                    self.state_stream=(self.session / 'robot_state.csv').open('x', newline='')
+                    self.state_writer=csv.writer(self.state_stream)
+                    self.state_writer.writerow(STATE_FIELDS)
+                    self.event_stream=(self.session / 'events.csv').open('x', newline='')
+                    self.event_writer=csv.writer(self.event_stream)
+                    self.event_writer.writerow(['received_ros_ns', 'received_monotonic_ns', 'phase'])
                 self.stream.flush()
                 self.active = True
                 self.ros.loginfo('CSV recording started: %s', self.session)
@@ -261,18 +334,47 @@ class ExperimentRecorder:
             self.contact_writer.writerow(CONTACT_FIELDS)
 
     def write_message(self, topic, msg):
+        if topic == '/directional_cbf/phase':
+            self.event_writer.writerow(msg)
+            return
+        if topic == '/franka_state_controller/franka_states':
+            msg, received_ns=msg
+            seq=int(msg.header.seq)
+            if self.previous_state_seq is not None:
+                delta=(seq-self.previous_state_seq) % (1 << 32)
+                if 1 < delta < (1 << 31):
+                    self.state_sequence_gaps += delta-1
+            self.previous_state_seq=seq
+            row=[msg.header.stamp.to_nsec(), received_ns, msg.robot_mode,
+                 msg.control_command_success_rate, error_names(msg.current_errors),
+                 error_names(msg.last_motion_errors)]
+            for name in STATE_ARRAYS:
+                row.extend(getattr(msg, name))
+            self.state_writer.writerow(row)
+            if not self.have_robot_metadata:
+                scalars=('m_ee', 'm_load', 'm_total')
+                arrays=('F_x_Cee', 'I_ee', 'F_x_Cload', 'I_load', 'F_x_Ctotal', 'I_total',
+                        'F_T_EE', 'F_T_NE', 'NE_T_EE', 'EE_T_K')
+                snapshot={key: getattr(msg, key) for key in scalars}
+                snapshot.update({key: list(getattr(msg, key)) for key in arrays})
+                (self.session / 'robot_model_state.json').write_text(json.dumps(snapshot, indent=2))
+                self.have_robot_metadata=True
+            self.written['state_rows']=self.written.get('state_rows', 0)+1
+            return
         if topic == '/directional_cbf/diagnostics':
             row = self.converter.convert(msg)
             debug = [0] + [''] * (len(DEBUG_FIELDS) - 1)
-            if msg.cbf_active:
-                self.open_contacts()
+            if msg.cbf_active or (self.real_robot and msg.debug_valid):
+                if not self.real_robot:
+                    self.open_contacts()
                 debug = [1, msg.robot_mode] + list(msg.q) + list(msg.dq) + list(msg.tau_command)
                 self.written['debug_rows'] += 1
-            self.writer.writerow(row + debug)
+            self.writer.writerow(row + debug + (hardware_row(msg) if self.real_robot else []))
             self.written['cbf_rows'] += 1
             self.cbf_missing += self.converter.last_missing
             self.last_cbf_active = bool(msg.cbf_active)
-            self.gate.diagnostic(msg, self.converter.segment)
+            if not self.real_robot:
+                self.gate.diagnostic(msg, self.converter.segment)
             if self.converter.last_missing:
                 self.ros.logwarn_throttle(2.0, 'CBF sample-index gaps detected; see CSV')
         else:
@@ -307,8 +409,9 @@ class ExperimentRecorder:
 
     def flush(self):
         self.stream.flush()
-        if self.contact_stream is not None:
-            self.contact_stream.flush()
+        for extra_stream in (self.contact_stream, self.state_stream, self.event_stream):
+            if extra_stream is not None:
+                extra_stream.flush()
         with self.lock:
             now = time.monotonic()
             ages = {topic: (None if topic not in self.seen else now-self.seen[topic])
@@ -316,6 +419,7 @@ class ExperimentRecorder:
             health = {
                 'written': dict(self.written), 'local_queue_drops': dict(self.dropped),
                 'cbf_missing_samples': self.cbf_missing,
+                'state_ros_sequence_gaps': self.state_sequence_gaps,
                 'contact_ros_sequence_gaps': self.contact_sequence_gaps,
                 'contact_unmatched': self.gate.unmatched,
                 'contact_buffer_overflow': self.gate.overflow,
@@ -326,19 +430,21 @@ class ExperimentRecorder:
         temp = self.session / 'health.json.tmp'
         temp.write_text(json.dumps(health, indent=2))
         temp.replace(self.session / 'health.json')
+        if self.real_robot:
+            return
         age = ages['/directional_cbf/contacts']
         if self.last_cbf_active and (age is None or age > 2.0) and not self.stopping:
             self.ros.logwarn_throttle(2.0, 'CBF debug: no recent Gazebo contact stream; '
                                      'an empty contacts.csv is NOT evidence of no contact')
 
     def close_files(self):
-        for stream in (self.stream, self.contact_stream):
+        for stream in (self.stream, self.contact_stream, self.state_stream, self.event_stream):
             if stream is not None:
                 try:
                     stream.close()
                 except Exception as error:
                     self.ros.logerr('CSV close failed: %s', error)
-        self.stream = self.contact_stream = None
+        self.stream = self.contact_stream = self.state_stream = self.event_stream = None
 
     def run(self):
         last_flush = time.monotonic()

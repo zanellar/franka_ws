@@ -26,6 +26,7 @@
   <arg name="log_dir" default="$(env HOME)/.ros/directional_cbf"/>
   <node pkg="franka_example_controllers" type="record_directional_cbf.py"
         name="directional_cbf_recorder" output="screen" if="$(arg record_cbf)">
+    <param name="runtime_environment" value="gazebo"/>
     <param name="output_dir" value="$(arg log_dir)"/>
     <param name="arm_id" value="$(arg arm_id)"/>
     <param name="gazebo_world" value="$(arg gazebo_world)"/>
@@ -132,6 +133,7 @@
       file="$(find franka_example_controllers)/config/franka_example_controllers.yaml"
       subst_value="true"/>
 
+  <param name="cartesian_impedance_directional_kinetic_energy_cbf_controller/runtime_environment" value="gazebo"/>
   <!-- Override YAML only for this experiment, after all controller configs. -->
   <param name="franka_state_controller/publish_rate" value="$(arg state_publish_rate)"/>
 
@@ -194,6 +196,7 @@
     output="screen"
     if="$(arg start_trajectory)">
 
+  <param name="runtime_environment" value="gazebo"/>
   <param name="publish_rate"
          value="$(arg publish_rate)"/>
   <param name="arm_id" value="$(arg arm_id)"/>

@@ -28,11 +28,19 @@ JointInitializer::JointInitializer(ros::NodeHandle root, ros::NodeHandle private
     : root_(root), private_node_(private_node), state_node_(root),
       directional_service_(directional_service) {
   private_node_.param("enable_joint_initialization", enabled_, false);
+  std::string environment;
+  private_node_.param<std::string>("runtime_environment", environment, "gazebo");
+  require(environment=="gazebo" || environment=="real", "Invalid runtime_environment");
+  real_robot_=environment=="real";
+  joint_controller_type_=real_robot_ ? "position_controllers/JointTrajectoryController" :
+                                      "effort_controllers/JointTrajectoryController";
+  private_node_.param("initialization_acceleration_cap", acceleration_cap_, 0.5);
+  private_node_.param("initialization_jerk_cap", jerk_cap_, 1.0);
   private_node_.param<std::string>("arm_id", arm_id_, "fr3");
   private_node_.param<std::string>("cartesian_controller", cartesian_controller_,
       "cartesian_impedance_directional_kinetic_energy_cbf_controller");
   private_node_.param<std::string>("joint_trajectory_controller", joint_controller_,
-      "effort_joint_trajectory_controller");
+      real_robot_ ? "position_joint_trajectory_controller" : "effort_joint_trajectory_controller");
   private_node_.param<std::string>("controller_manager", manager_, "/controller_manager");
   private_node_.param<std::string>("franka_state_topic", state_topic_,
       "/franka_state_controller/franka_states");
@@ -105,13 +113,13 @@ franka_msgs::FrankaState JointInitializer::nextState(double wall_timeout) {
       for (double dq : state_.dq) require(std::isfinite(dq), "Nonfinite measured dq");
       require(state_.robot_mode == franka_msgs::FrankaState::ROBOT_MODE_MOVE ||
               state_.robot_mode == franka_msgs::FrankaState::ROBOT_MODE_IDLE,
-              "Robot mode is not MOVE/IDLE; resolve the Gazebo robot error first");
+              "Robot mode is not MOVE/IDLE; resolve the robot error first");
       previous_stamp_ = state_.header.stamp;
       have_stamp_ = true;
       return state_;
     }
   }
-  throw std::runtime_error("No fresh, advancing Franka state (check Gazebo pause/clock/state controller)");
+  throw std::runtime_error("No fresh, advancing Franka state (check clock, connection and state controller)");
 }
 
 void JointInitializer::waitSettled(bool check_target) {
@@ -156,8 +164,12 @@ void JointInitializer::preflight() {
   require(enabled_, "Joint initialization is disabled in this launch");
   bool sim_time = false;
   root_.getParam("/use_sim_time", sim_time);
-  require(sim_time && ros::service::exists("/gazebo/get_world_properties", false),
-          "This joint initialization workflow is restricted to Gazebo simulation");
+  if (real_robot_) {
+    require(!sim_time, "Real initialization requires /use_sim_time=false");
+  } else {
+    require(sim_time && ros::service::exists("/gazebo/get_world_properties", false),
+            "Gazebo initialization requires the simulator and its clock");
+  }
   require(!directional_service_.empty(), "Directional experiment service is not configured");
   for (double parameter : {position_tolerance_, velocity_tolerance_, settle_time_, wall_timeout_})
     require(std::isfinite(parameter) && parameter > 0.0, "Invalid initialization tolerance/timeout");
@@ -170,6 +182,11 @@ void JointInitializer::preflight() {
     require(joint && joint->type == urdf::Joint::REVOLUTE && joint->limits,
             "Missing bounded revolute URDF joint: "+joint_names_[i]);
     bounds_[i] = {joint->limits->lower, joint->limits->upper, joint->limits->velocity};
+    if (real_robot_) {
+      require(static_cast<bool>(joint->safety), "Missing URDF soft joint limits");
+      bounds_[i].lower=std::max(bounds_[i].lower,joint->safety->soft_lower_limit);
+      bounds_[i].upper=std::min(bounds_[i].upper,joint->safety->soft_upper_limit);
+    }
   }
   validateJointTarget(target_, bounds_, margin_, duration_);
   bool cart_running=false, joint_running=false, cart_loaded=false;
@@ -178,8 +195,8 @@ void JointInitializer::preflight() {
       cart_loaded=true; cart_running=controller.state=="running";
     }
     if (controller.name == joint_controller_) {
-      require(controller.type == "effort_controllers/JointTrajectoryController",
-              "Initialization expects effort_controllers/JointTrajectoryController");
+      require(controller.type == joint_controller_type_,
+              "Unexpected initialization controller type: "+controller.type);
       joint_running=controller.state=="running";
     }
   }
@@ -190,9 +207,15 @@ void JointInitializer::preflight() {
   waitSettled(false);
   start_state_=settled_state_;
   measuredPose(start_state_);  // Validate handoff data before any switch.
-  const double minimum = minimumJointDuration(asArray(start_state_.q), target_, bounds_,
-                                               velocity_scale_, velocity_cap_);
+  const double minimum = requiredDuration();
   require(duration_ >= minimum, "duration too short; use at least "+std::to_string(minimum)+" s");
+}
+
+double JointInitializer::requiredDuration() const {
+  double minimum=minimumJointDuration(asArray(start_state_.q),target_,bounds_,velocity_scale_,velocity_cap_);
+  if (real_robot_) minimum=std::max(minimum,hardwareJointDuration(
+      asArray(start_state_.q),target_,acceleration_cap_,jerk_cap_));
+  return minimum;
 }
 
 void JointInitializer::invalidateReference() {
@@ -213,7 +236,7 @@ void JointInitializer::acquireJointController() {
   }
   for (const auto& controller : controllers())
     if (controller.name == joint_controller_)
-      require(controller.type == "effort_controllers/JointTrajectoryController", "Wrong joint-controller type");
+      require(controller.type == joint_controller_type_, "Wrong joint-controller type");
   if (!running) switchControllers({joint_controller_}, {cartesian_controller_});
   requireState(cartesian_controller_, "stopped");
   requireState(joint_controller_, "running");
@@ -229,8 +252,7 @@ void JointInitializer::moveAndSettle() {
   // Re-read the actual state after switching; the joint controller starts by holding it.
   waitSettled(false);
   start_state_=settled_state_;
-  const double minimum=minimumJointDuration(asArray(start_state_.q), target_, bounds_,
-                                             velocity_scale_, velocity_cap_);
+  const double minimum=requiredDuration();
   require(duration_ >= minimum, "Robot moved during handoff; retry with a longer duration");
   control_msgs::FollowJointTrajectoryGoal goal;
   goal.trajectory.joint_names=joint_names_;

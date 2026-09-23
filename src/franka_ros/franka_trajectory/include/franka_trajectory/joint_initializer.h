@@ -64,6 +64,10 @@ class JointInitializer {
   double duration_{0.0}, margin_, velocity_scale_, velocity_cap_;
   double position_tolerance_, velocity_tolerance_, settle_time_, wall_timeout_;
   bool enabled_{false};
+  bool real_robot_{false};
+  std::string joint_controller_type_;
+  double acceleration_cap_{0.5}, jerk_cap_{1.0};
+  double requiredDuration() const;
   std::unique_ptr<ActionClient> action_;
 };
 }  // namespace franka_trajectory

@@ -1,0 +1,13 @@
+<launch>
+  <!-- Entirely mocked ROS endpoints: this test never starts franka_control. -->
+  <param name="use_sim_time" value="false"/>
+  <node pkg="franka_trajectory" type="linear" name="trajectory_publisher" output="screen">
+    <param name="runtime_environment" value="real"/>
+    <param name="enable_joint_initialization" value="true"/>
+    <param name="directional_experiment_service" value="/fake_directional/start_experiment"/>
+    <param name="initialization_settle_time" value="0.05"/>
+    <param name="initialization_wall_timeout" value="10.0"/>
+  </node>
+  <test pkg="franka_trajectory" type="real_initialization_ros_test.py"
+        name="real_initialization_test" time-limit="60"/>
+</launch>

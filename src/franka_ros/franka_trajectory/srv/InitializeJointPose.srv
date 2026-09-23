@@ -1,6 +1,6 @@
-# Gazebo only. q is ordered arm_id_joint1 ... arm_id_joint7, in radians.
+# Explicit initialization; backend selected by runtime_environment. q is ordered arm_id_joint1 ... arm_id_joint7, in radians.
 float64[7] q
-# Requested trajectory duration in simulation seconds (minimum 2 seconds).
+# Requested trajectory duration in ROS seconds (minimum 2 seconds).
 float64 duration
 ---
 bool success

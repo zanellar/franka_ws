@@ -17,7 +17,7 @@ inline void validateJointTarget(const std::array<double, 7>& q,
                                 const std::array<JointBounds, 7>& bounds,
                                 double margin, double duration) {
   if (!std::isfinite(duration) || duration < 2.0)
-    throw std::runtime_error("duration must be finite and at least 2 simulation seconds");
+    throw std::runtime_error("duration must be finite and at least 2 seconds");
   if (!std::isfinite(margin) || margin < 0.0)
     throw std::runtime_error("initialization_joint_margin must be finite and nonnegative");
   for (size_t i = 0; i < q.size(); ++i) {
@@ -43,6 +43,23 @@ inline double minimumJointDuration(const std::array<double, 7>& start,
     // Quintic zero-velocity/zero-acceleration endpoints: peak ds/dt = 1.875/T.
     const double speed = std::min(velocity_cap, velocity_scale * bounds[i].velocity);
     duration = std::max(duration, 1.875 * std::abs(target[i]-start[i]) / speed);
+  }
+  return duration;
+}
+
+// Quintic rest-to-rest profile: max |s''|=10/sqrt(3), max |s'''|=60.
+inline double hardwareJointDuration(const std::array<double, 7>& start,
+                                    const std::array<double, 7>& target,
+                                    double acceleration, double jerk) {
+  if (!std::isfinite(acceleration) || acceleration<=0 ||
+      !std::isfinite(jerk) || jerk<=0)
+    throw std::runtime_error("Invalid initialization acceleration/jerk caps");
+  double duration=2.0;
+  for (size_t i=0;i<7;++i) {
+    const double distance=std::abs(target[i]-start[i]);
+    if (!std::isfinite(distance)) throw std::runtime_error("Invalid joint displacement");
+    duration=std::max(duration,std::sqrt((10.0/std::sqrt(3.0))*distance/acceleration));
+    duration=std::max(duration,std::cbrt(60.0*distance/jerk));
   }
   return duration;
 }

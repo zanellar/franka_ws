@@ -3,6 +3,8 @@
 #pragma once
 
 #include <boost/thread/recursive_mutex.hpp>
+#include <realtime_tools/realtime_buffer.h>
+#include <franka_example_controllers/directional_hardware_qp.h>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -70,6 +72,34 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
                         const std::vector<std::string>& joint_names);
   Vector7d clampTorqueCommand(const Vector7d& command, const Vector7d& gravity) const;
   bool initializeQpSolver();
+  void applyCompliance(double translation, double rotation, double nullspace);
+  struct HardwareRequest {
+    std::array<double, 3> position{};
+    std::array<double, 4> orientation{{1,0,0,0}};
+    double translation{200}, rotation{10}, nullspace{0.5}, Kmax{1}, alpha{1};
+    bool cbf_active{false};
+    uint64_t experiment_sequence{0};
+  };
+  // Only callbacks write this snapshot. Only update()/starting() touch RT state.
+  HardwareRequest hardware_request_;
+  realtime_tools::RealtimeBuffer<HardwareRequest> hardware_buffer_;
+  uint64_t hardware_sequence_{0};
+  bool real_robot_{false};
+  bool batching_hardware_request_{false};
+  double hardware_cutoff_{100}, hardware_rate_{999.0};
+  double derivative_filter_alpha_{0.05};
+  double max_update_seconds_{0.0009}, max_period_seconds_{0.002};
+  std::array<hardware_cbf::JointLimits, 7> hardware_limits_{};
+  hardware_cbf::Envelope hardware_envelope_;
+  Vector7d hardware_coriolis_{Vector7d::Zero()};
+  Vector7d predicted_torque_{Vector7d::Zero()};
+  Vector7d previous_prediction_{Vector7d::Zero()};
+  bool have_prediction_{false};
+  double prediction_error_{0}, qp_time_us_{0}, previous_dt_{0.001};
+  Matrix6x7d filtered_jacobian_dot_{Matrix6x7d::Zero()};
+  Matrix7d filtered_mass_dot_{Matrix7d::Zero()};
+  std::unique_ptr<realtime_tools::RealtimePublisher<franka_msgs::Cbf>> realtime_cbf_publisher_;
+
 
   CbfResult directionalKineticEnergyCbf(
       const Vector7d& u_nominal,

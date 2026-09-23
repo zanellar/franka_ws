@@ -83,6 +83,9 @@ add_library(franka_example_controllers
 )
 
 
+target_compile_definitions(franka_example_controllers PRIVATE
+  DIRECTIONAL_CBF_LIBFRANKA_VERSION="${Franka_VERSION}")
+
 add_dependencies(franka_example_controllers
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
@@ -192,6 +195,9 @@ catkin_install_python(
 
 
 if(CATKIN_ENABLE_TESTING)
+  add_executable(directional_hardware_qp_test test/directional_hardware_qp_test.cpp)
+  target_include_directories(directional_hardware_qp_test PRIVATE include)
+  add_test(NAME directional_hardware_qp_test COMMAND directional_hardware_qp_test)
   add_executable(directional_cbf_task_state_test test/directional_cbf_task_state_test.cpp)
   target_include_directories(directional_cbf_task_state_test PRIVATE include)
   add_test(NAME directional_cbf_task_state_test COMMAND directional_cbf_task_state_test)

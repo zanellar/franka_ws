@@ -10,6 +10,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <ros/ros.h>
 #include <std_srvs/Trigger.h>
+#include <std_msgs/String.h>
 
 #include <franka_trajectory/SetLinearCommand.h>
 #include <franka_trajectory/joint_initializer.h>
@@ -19,7 +20,14 @@ class LinearTrajectory {
  public:
   LinearTrajectory()
       : private_node_handle_("~") {
-    // Same initial target used by hold.cpp.
+    std::string environment;
+    private_node_handle_.param<std::string>("runtime_environment", environment, "gazebo");
+    if (environment!="gazebo" && environment!="real") throw std::runtime_error("Invalid runtime_environment");
+    real_robot_=environment=="real";
+    reference_ready_=!real_robot_;
+    phase_publisher_=root_node_handle_.advertise<std_msgs::String>("/directional_cbf/phase",10,true);
+    publishPhase(real_robot_ ? "awaiting_initialization" : "ready");
+    // Legacy Gazebo target. In real mode no pose is published before initialization.
     target_pose_.pose.position.x = 0.307;
     target_pose_.pose.position.y = 0.0;
     target_pose_.pose.position.z = 0.59;
@@ -111,8 +119,14 @@ class LinearTrajectory {
     // own queue and the initializer services a separate Franka-state queue.
     // No old equilibrium pose is published during this blocking transaction.
     std::lock_guard<std::mutex> lock(target_mutex_);
+    if (real_robot_ && !ensureRecording(response.message)) {
+      response.success=false;
+      return true;
+    }
+    publishPhase("initializing");
     const bool result = joint_initializer_->initialize(request, response,
         target_pose_.pose, reference_ready_);
+    publishPhase(response.success ? "ready" : "initialization_failed");
     if (response.success) target_pose_.header.stamp = ros::Time::now();
     return result;
   }
@@ -122,7 +136,7 @@ class LinearTrajectory {
       franka_trajectory::SetLinearCommand::Response& response) {
     if (!reference_ready_) {
       response.success = false;
-      response.message = "Cartesian reference unavailable after initialization failure; retry initialize_joint_pose";
+      response.message = "Cartesian reference unavailable; call initialize_joint_pose successfully first";
       return true;
     }
     if (!std::isfinite(request.x_move) ||
@@ -195,6 +209,7 @@ class LinearTrajectory {
         std::lock_guard<std::mutex> lock(target_mutex_);
         target_pose_.pose = command.request.target;
         response.applied_pose = target_pose_.pose;
+        publishPhase("experiment_requested");
       }
       return true;
     }
@@ -255,6 +270,20 @@ class LinearTrajectory {
     return true;
   }
 
+  void publishPhase(const std::string& value) {
+    std_msgs::String message; message.data=value; phase_publisher_.publish(message);
+  }
+  bool ensureRecording(std::string& message) {
+    if (recording_start_service_.empty()) return true;
+    std_srvs::Trigger recording;
+    if (!recording_client_.call(recording) || !recording.response.success) {
+      message="Recorder not ready; no motion sent. "+recording.response.message;
+      return false;
+    }
+    return true;
+  }
+  bool real_robot_{false};
+  ros::Publisher phase_publisher_;
   ros::NodeHandle root_node_handle_;
   ros::NodeHandle private_node_handle_;
 

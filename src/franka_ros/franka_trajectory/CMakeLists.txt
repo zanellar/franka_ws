@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   roscpp
   std_srvs
+  std_msgs
 )
 
 add_service_files(
@@ -52,6 +53,7 @@ catkin_package(
     message_runtime
     roscpp
     std_srvs
+    std_msgs
 )
 
 set(EXECUTABLES circular chirp square_wave hold tension linear)
@@ -76,6 +78,11 @@ endforeach()
 target_sources(linear PRIVATE src/joint_initializer.cpp)
 
 if(CATKIN_ENABLE_TESTING)
+  find_package(rostest REQUIRED)
+  catkin_install_python(PROGRAMS test/real_initialization_ros_test.py
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+  add_rostest(test/real_initialization.test)
+  install(FILES test/real_initialization.test DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/test)
   add_executable(initialization_policy_test test/initialization_policy_test.cpp)
   target_include_directories(initialization_policy_test PRIVATE include)
   add_test(NAME initialization_policy_test COMMAND initialization_policy_test)
