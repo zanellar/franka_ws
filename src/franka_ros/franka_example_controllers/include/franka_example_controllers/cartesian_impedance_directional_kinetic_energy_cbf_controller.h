@@ -45,7 +45,7 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
 
  private:
   using Vector7d = Eigen::Matrix<double, 7, 1>;
-  using Vector1d = Eigen::Matrix<double, 1, 1>;
+  using Vector8d = Eigen::Matrix<double, 8, 1>;
   using Matrix7d = Eigen::Matrix<double, 7, 7>;
   using Matrix6x7d = Eigen::Matrix<double, 6, 7>;
   using Matrix3x7d = Eigen::Matrix<double, 3, 7>;
@@ -66,10 +66,14 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   };
 
   bool readParameters(ros::NodeHandle& node_handle);
+  bool readTorqueLimits(ros::NodeHandle& node_handle,
+                        const std::vector<std::string>& joint_names);
+  Vector7d clampTorqueCommand(const Vector7d& command, const Vector7d& gravity) const;
   bool initializeQpSolver();
 
   CbfResult directionalKineticEnergyCbf(
       const Vector7d& u_nominal,
+      const Vector7d& torque_offset,
       const Matrix7d& mass,
       const Matrix6x7d& jacobian,
       const Vector7d& dq,
@@ -88,6 +92,8 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   bool experiment_service_mode_{false};
   double abort_damping_{20.0};
   double cbf_residual_tolerance_{1.0e-5};
+  double torque_limit_tolerance_{1.0e-5};  // Nm; numerical acceptance only.
+  Vector7d torque_limits_{Vector7d::Zero()};  // URDF total-effort limits.
 
   void complianceParamCallback(franka_example_controllers::compliance_paramConfig& config,
                                uint32_t level);
@@ -146,9 +152,9 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   int derivative_sample_count_{0};
 
   SparseMatrix objective_matrix_{7, 7};
-  SparseMatrix constraint_matrix_{1, 7};
-  Vector1d lower_bounds_{Vector1d::Zero()};
-  Vector1d upper_bounds_{Vector1d::Zero()};
+  SparseMatrix constraint_matrix_{8, 7};
+  Vector8d lower_bounds_{Vector8d::Zero()};
+  Vector8d upper_bounds_{Vector8d::Zero()};
   osqp::OsqpInstance qp_instance_;
   osqp::OsqpSolver qp_solver_;
   osqp::OsqpSettings qp_settings_;

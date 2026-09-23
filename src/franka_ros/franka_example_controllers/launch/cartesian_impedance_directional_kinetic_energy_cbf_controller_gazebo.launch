@@ -95,8 +95,9 @@
          type="double"
          value="$(arg derivative_filter_alpha)"/>
 
-  <!-- Simulation experiment: remove effort and velocity-triggered force clipping. -->
-  <param name="disable_gazebo_torque_limits" type="bool" value="true"/>
+  <!-- Keep URDF effort and velocity-triggered force limits enabled.
+       FrankaHWSim reads this at initialization; restart Gazebo after changes. -->
+  <param name="disable_gazebo_torque_limits" type="bool" value="false"/>
 
   <!-- Start Gazebo -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">

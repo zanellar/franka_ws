@@ -9,3 +9,5 @@ log/
 logs/
 
 /data/*
+*.patch
+*.Identifier

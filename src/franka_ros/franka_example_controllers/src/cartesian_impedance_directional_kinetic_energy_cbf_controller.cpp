@@ -16,6 +16,7 @@
 #include <pluginlib/class_list_macros.h>
 #include <ros/console.h>
 #include <ros/ros.h>
+#include <urdf/model.h>
 
 #include <franka_example_controllers/pseudo_inversion.h>
 
@@ -56,13 +57,15 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::readParameters(
 
   node_handle.param("abort_damping", abort_damping_, 20.0);
   node_handle.param("cbf_residual_tolerance", cbf_residual_tolerance_, 1.0e-5);
+  node_handle.param("torque_limit_tolerance", torque_limit_tolerance_, 1.0e-5);
   const auto& min_config = compliance_paramConfig::__getMin__();
   const auto& max_config = compliance_paramConfig::__getMax__();
   if (!std::isfinite(abort_damping_) || abort_damping_ <= 0.0 ||
       !std::isfinite(cbf_residual_tolerance_) || cbf_residual_tolerance_ < 0.0 ||
+      !std::isfinite(torque_limit_tolerance_) || torque_limit_tolerance_ < 0.0 ||
       Kmax_ < min_config.Kmax || Kmax_ > max_config.Kmax ||
       alpha_ < min_config.alpha || alpha_ > max_config.alpha) {
-    ROS_ERROR("Invalid abort damping, residual tolerance or CBF configuration range");
+    ROS_ERROR("Invalid abort damping, residual/torque tolerance or CBF configuration range");
     return false;
   }
 
@@ -97,6 +100,49 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::readParameters(
   return true;
 }
 
+bool CartesianImpedanceDirectionalKineticEnergyCBFController::readTorqueLimits(
+    ros::NodeHandle& node_handle, const std::vector<std::string>& joint_names) {
+  std::string description_param;
+  std::string description;
+  urdf::Model model;
+  if (!node_handle.searchParam("robot_description", description_param) ||
+      !node_handle.getParam(description_param, description) || !model.initString(description)) {
+    ROS_ERROR("Directional CBF: cannot load robot_description for effort limits");
+    return false;
+  }
+  for (size_t i = 0; i < joint_names.size(); ++i) {
+    const auto joint = model.getJoint(joint_names[i]);
+    if (!joint || !joint->limits || !std::isfinite(joint->limits->effort) ||
+        joint->limits->effort <= 0.0) {
+      ROS_ERROR_STREAM("Directional CBF: missing or invalid effort limit for " << joint_names[i]);
+      return false;
+    }
+    torque_limits_(i) = joint->limits->effort;
+  }
+  ROS_INFO_STREAM("Directional CBF: URDF total-effort limits [Nm]: "
+                  << torque_limits_.transpose());
+  return true;
+}
+
+CartesianImpedanceDirectionalKineticEnergyCBFController::Vector7d
+CartesianImpedanceDirectionalKineticEnergyCBFController::clampTorqueCommand(
+    const Vector7d& command, const Vector7d& gravity) const {
+  // FrankaHWSim adds gravity AFTER receiving this command. These bounds apply
+  // to command + gravity, not to the gravity-free command alone.
+  // An invalid gravity model prevents predicting total effort. Send no active
+  // torque in that case and leave the independent simulator limits enabled.
+  if (!gravity.allFinite()) {
+    return Vector7d::Zero();
+  }
+  Vector7d bounded;
+  for (int i = 0; i < 7; ++i) {
+    const double requested = std::isfinite(command(i)) ? command(i) : 0.0;
+    bounded(i) = std::max(-torque_limits_(i) - gravity(i),
+                          std::min(torque_limits_(i) - gravity(i), requested));
+  }
+  return bounded;
+}
+
 bool CartesianImpedanceDirectionalKineticEnergyCBFController::initializeQpSolver() {
   // OSQP uses 0.5*u^T*P*u + q^T*u. P=2I and q=-2*u_nominal
   // therefore reproduce ||u-u_nominal||^2 up to an additive constant.
@@ -104,11 +150,12 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::initializeQpSolver
   objective_matrix_ *= 2.0;
   objective_matrix_.makeCompressed();
 
-  // Fixed sparsity: only the CBF half-space, as in the Python QP.
+  // Fixed sparsity: one CBF half-space followed by seven bilateral torque bounds.
   std::vector<Eigen::Triplet<double, osqp::c_int>> constraint_triplets;
-  constraint_triplets.reserve(7);
+  constraint_triplets.reserve(14);
   for (osqp::c_int joint = 0; joint < 7; ++joint) {
     constraint_triplets.emplace_back(0, joint, 1.0);
+    constraint_triplets.emplace_back(1 + joint, joint, 1.0);
   }
   constraint_matrix_.setFromTriplets(constraint_triplets.begin(), constraint_triplets.end());
   constraint_matrix_.makeCompressed();
@@ -117,8 +164,11 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::initializeQpSolver
   qp_instance_.objective_vector = Vector7d::Zero();
   qp_instance_.constraint_matrix = constraint_matrix_;
 
-  lower_bounds_.head<1>() << -kInfinity_;
-  upper_bounds_.head<1>() << kInfinity_;
+  lower_bounds_(0) = -kInfinity_;
+  upper_bounds_(0) = kInfinity_;
+  // Placeholder zero-bias box. All bounds are updated before every Solve().
+  lower_bounds_.tail<7>() = -torque_limits_;
+  upper_bounds_.tail<7>() = torque_limits_;
   qp_instance_.lower_bounds = lower_bounds_;
   qp_instance_.upper_bounds = upper_bounds_;
 
@@ -174,6 +224,10 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::init(
     ROS_ERROR_STREAM(
         "CartesianImpedanceDirectionalKineticEnergyCBFController: Invalid or missing "
         "joint_names parameter");
+    return false;
+  }
+
+  if (!readTorqueLimits(node_handle, joint_names)) {
     return false;
   }
 
@@ -305,11 +359,13 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   std::lock_guard<std::recursive_mutex> lock(control_mutex_);
   const franka::RobotState robot_state = state_handle_->getRobotState();
   const std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
+  const std::array<double, 7> gravity_array = model_handle_->getGravity();
   const std::array<double, 49> mass_array = model_handle_->getMass();
   const std::array<double, 42> jacobian_array =
       model_handle_->getZeroJacobian(franka::Frame::kEndEffector);
 
   const Vector7d coriolis = Eigen::Map<const Vector7d>(coriolis_array.data());
+  const Vector7d gravity = Eigen::Map<const Vector7d>(gravity_array.data());
   const Matrix7d mass = Eigen::Map<const Matrix7d>(mass_array.data());
   const Matrix6x7d jacobian = Eigen::Map<const Matrix6x7d>(jacobian_array.data());
   const Vector7d q = Eigen::Map<const Vector7d>(robot_state.q.data());
@@ -380,11 +436,15 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   //   tau_command = u_safe + u_bias.
   const Vector7d u_bias = coriolis;
   const Vector7d tau_nominal = u_nominal + u_bias;
+  // Total effort in Gazebo is u + coriolis + gravity. Gravity is used only
+  // to translate the QP bounds; it must NOT be added again to tau_command.
+  const Vector7d torque_offset = coriolis + gravity;
 
   // Continue diagnostics while aborted, but do not solve or resume on a
   // periodic pose message. Only start_experiment can request another attempt.
   const CbfResult cbf_result = directionalKineticEnergyCbf(
-      u_nominal, mass, jacobian, dq, period.toSec(), cbf_active_ && !task_state_.aborted());
+      u_nominal, torque_offset, mass, jacobian, dq, period.toSec(),
+      cbf_active_ && !task_state_.aborted());
   if (!task_state_.aborted() && cbf_result.solver_status >= 3) {
     task_state_.fail(cbf_result.solver_status);
     ROS_ERROR_STREAM("Directional experiment ABORTED (status "
@@ -393,15 +453,32 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   }
 
   Vector7d tau_command = cbf_result.u_safe + u_bias;
-  if (!tau_command.allFinite()) {
+  if (!tau_command.allFinite() || !gravity.allFinite()) {
     ROS_ERROR_THROTTLE(1.0, "Directional experiment aborted: non-finite commanded torque");
     task_state_.fail(3);
+  }
+  if (!task_state_.aborted()) {
+    // Enforce the same effort box with CBF disabled. With CBF enabled this
+    // should only remove numerical roundoff; recheck the actual command.
+    tau_command = clampTorqueCommand(tau_command, gravity);
+    if (cbf_active_ && cbf_result.solver_status == 1) {
+      const double applied_residual =
+          (cbf_result.barrier_a * (tau_command - coriolis))(0, 0) +
+          cbf_result.barrier_b + alpha_ * cbf_result.h;
+      if (!DirectionalCbfTaskState::acceptsSolution(true, applied_residual,
+                                                   cbf_residual_tolerance_)) {
+        task_state_.fail(6);
+        ROS_ERROR_THROTTLE(1.0, "Directional CBF: bounded command violates CBF; aborting");
+      }
+    }
   }
   if (task_state_.aborted()) {
     // Gravity is added by FrankaHWSim. Do not add Coriolis here. A positive
     // inertia-weighted viscous brake dissipates total energy without the very
     // large deceleration of a fixed damping gain on low-inertia wrist joints.
-    // This abort action is not a certified directional-CBF solution.
+    // The requested brake is subsequently torque-limited. After limiting,
+    // neither directional-CBF satisfaction nor total-energy dissipation is
+    // guaranteed.
     tau_command.setZero();
     if (dq.allFinite()) {
       Eigen::LDLT<Matrix7d> brake_mass;
@@ -413,6 +490,9 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
       }
     }
   }
+
+  // Also bound the fallback brake; never label it as a valid CBF solution.
+  tau_command = clampTorqueCommand(tau_command, gravity);
 
   for (size_t joint = 0; joint < 7; ++joint) {
     joint_handles_[joint].setCommand(tau_command(joint));
@@ -507,6 +587,7 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
 CartesianImpedanceDirectionalKineticEnergyCBFController::CbfResult
 CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnergyCbf(
     const Vector7d& u_nominal,
+    const Vector7d& torque_offset,
     const Matrix7d& mass,
     const Matrix6x7d& jacobian,
     const Vector7d& dq,
@@ -517,7 +598,7 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
   // The nominal input is returned only for the intentional CBF bypass.
   result.u_safe = u_nominal;
   if (!mass.allFinite() || !jacobian.allFinite() || !dq.allFinite() ||
-      !u_nominal.allFinite()) {
+      !u_nominal.allFinite() || !torque_offset.allFinite()) {
     ROS_ERROR_THROTTLE(1.0, "Directional CBF: non-finite model/state/control");
     result.solver_status = 3;
     return result;
@@ -672,6 +753,8 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
 
   lower_bounds_(0) = cbf_lower_bound;
   upper_bounds_(0) = kInfinity_;
+  lower_bounds_.tail<7>() = -torque_limits_ - torque_offset;
+  upper_bounds_.tail<7>() = torque_limits_ - torque_offset;
 
   const Vector7d objective_vector = -2.0 * u_nominal;
   const absl::Status matrix_status = qp_solver_.UpdateConstraintMatrix(constraint_matrix_);
@@ -715,8 +798,23 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
     return result;
   }
 
-  const double safe_constraint = (a * solution)(0, 0) + b + alpha_ * h;
-  result.constraint_qp = safe_constraint;
+  // Reject material box violations. Only project numerical solver tolerance,
+  // then check the CBF again on the projected candidate before accepting it.
+  const Vector7d torque_lower = lower_bounds_.tail<7>();
+  const Vector7d torque_upper = upper_bounds_.tail<7>();
+  const Vector7d raw_solution = solution;
+  result.constraint_qp = (a * raw_solution)(0, 0) + b + alpha_ * h;
+  const double torque_violation = std::max(
+      (torque_lower - raw_solution).maxCoeff(),
+      (raw_solution - torque_upper).maxCoeff());
+  if (torque_violation > torque_limit_tolerance_) {
+    ROS_ERROR_STREAM_THROTTLE(1.0, "Directional CBF: torque bounds rejected by "
+                                      << torque_violation << " Nm; aborting");
+    result.solver_status = 6;
+    return result;
+  }
+  const Vector7d bounded_solution = raw_solution.cwiseMax(torque_lower).cwiseMin(torque_upper);
+  const double safe_constraint = (a * bounded_solution)(0, 0) + b + alpha_ * h;
   if (!DirectionalCbfTaskState::acceptsSolution(true, safe_constraint,
                                                cbf_residual_tolerance_)) {
     ROS_ERROR_STREAM_THROTTLE(
@@ -726,7 +824,7 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
     return result;
   }
 
-  result.u_safe = solution;
+  result.u_safe = bounded_solution;
   result.solver_status = 1;
   return result;
 }
