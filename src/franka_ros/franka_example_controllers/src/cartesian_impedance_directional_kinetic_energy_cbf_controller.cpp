@@ -657,6 +657,11 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   Eigen::Map<Vector7d> u_measured_map(&cbf_info_.u_measured[0]);
   Eigen::Map<Vector7d> u_saturated_map(&cbf_info_.u_saturated[0]);
   Eigen::Map<Vector7d> u_ext_map(&cbf_info_.u_ext[0]);
+  // Raw CBF coordinates: Coriolis excluded, before final command limiting.
+  // On abort the CBF result is not the applied braking command.
+  Eigen::Map<Vector7d>(&cbf_info_.u_nom[0]) = u_nominal;
+  Eigen::Map<Vector7d>(&cbf_info_.u_safe[0]) = cbf_result.u_safe;
+  Eigen::Map<Vector7d>(&cbf_info_.coriolis[0]) = coriolis;
   u_des_map = tau_nominal;
   u_cbf_map = tau_command;
   u_measured_map = tau_J;
@@ -1127,3 +1132,4 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::equilibriumPoseCal
 PLUGINLIB_EXPORT_CLASS(
     franka_example_controllers::CartesianImpedanceDirectionalKineticEnergyCBFController,
     controller_interface::ControllerBase)
+

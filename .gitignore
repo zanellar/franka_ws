@@ -9,5 +9,8 @@ log/
 logs/
 
 /data/*
+/plots/*
 *.patch
 *.Identifier
+*.png
+*.csv

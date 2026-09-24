@@ -1,4 +1,8 @@
 std_msgs/Header header
+# Raw CBF input/result without Coriolis; u_safe is not applied during abort.
+float64[7] u_nom
+float64[7] u_safe
+float64[7] coriolis
 float64[7] u_des
 float64[7] u_cbf
 float64[7] u_measured
