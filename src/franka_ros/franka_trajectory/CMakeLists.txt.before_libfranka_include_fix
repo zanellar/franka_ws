@@ -37,12 +37,7 @@ if(NOT Franka_FOUND)
 endif()
 
 # merge Franka + catkin INCLUDE_DIRS in topological order
-# Keep the selected libfranka headers ahead of ROS-installed headers.
-if(NOT Franka_INCLUDE_DIRS)
-  message(FATAL_ERROR "Franka_INCLUDE_DIRS is empty")
-endif()
-list(REMOVE_ITEM catkin_INCLUDE_DIRS ${Franka_INCLUDE_DIRS})
-list(INSERT catkin_INCLUDE_DIRS 0 ${Franka_INCLUDE_DIRS})
+list_insert_in_workspace_order(catkin_INCLUDE_DIRS ${Franka_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS})
 
 catkin_package(
   CATKIN_DEPENDS

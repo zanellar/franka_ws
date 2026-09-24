@@ -58,11 +58,13 @@ list(REMOVE_ITEM catkin_LIBRARIES
 )
 
 # Keep the workspace and libfranka include directories in the correct order.
-list_insert_in_workspace_order(
-  catkin_INCLUDE_DIRS
-  ${Franka_INCLUDE_DIRS}
-  ${catkin_INCLUDE_DIRS}
-)
+# Prefer headers from the selected libfranka installation.
+if(NOT Franka_INCLUDE_DIRS)
+  message(FATAL_ERROR "Franka_INCLUDE_DIRS is empty")
+endif()
+
+list(REMOVE_ITEM catkin_INCLUDE_DIRS ${Franka_INCLUDE_DIRS})
+list(INSERT catkin_INCLUDE_DIRS 0 ${Franka_INCLUDE_DIRS})
 
 catkin_package(
   CATKIN_DEPENDS

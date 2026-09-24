@@ -256,8 +256,7 @@ export CC=/usr/bin/gcc-10
 export CXX=/usr/bin/g++-10
 export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
 
-catkin_make install \
-  -DCMAKE_INSTALL_PREFIX="$PWD/install" \
+catkin_make install --force-cmake \
   -DCMAKE_C_COMPILER=/usr/bin/gcc-10 \
   -DCMAKE_CXX_COMPILER=/usr/bin/g++-10 \
   -DCMAKE_CXX_STANDARD=17 \
@@ -266,15 +265,23 @@ catkin_make install \
   -DABSL_PROPAGATE_CXX_STD=ON \
   -DABSL_BUILD_TESTING=OFF \
   -DOSQP-CPP_BUILD_TESTS=OFF \
+  -DFranka_DIR="$FRANKA_013_PREFIX/lib/cmake/Franka" \
   -DCMAKE_PREFIX_PATH="$FRANKA_013_PREFIX;/opt/ros/noetic" \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCATKIN_ENABLE_TESTING=OFF
-```
+  -DCATKIN_ENABLE_TESTING=ON
 
-A successful Abseil configuration should report:
+cp -a devel/lib/libabsl*.so* install/lib/
 
-``` text
-Performing Test ABSL_INTERNAL_AT_LEAST_CXX17 - Success
+source /opt/ros/noetic/setup.bash
+source ~/Riccardo/franka_ws_013/install/setup.bash
+
+export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
+
+export LD_LIBRARY_PATH="$HOME/Riccardo/franka_ws_013/install/lib:$FRANKA_013_PREFIX/lib:/opt/ros/noetic/lib:/opt/ros/noetic/lib/x86_64-linux-gnu"
+
+grep -R -n -E '/opt/ros/noetic/include/franka/(robot|robot_state)\.h' build/franka_ros --include='*.o.d'
+
+ldd install/lib/libfranka_hw.so | grep -E 'libfranka\.so|not found'
 ```
 
 ### 8. Copy Abseil shared libraries
@@ -546,7 +553,7 @@ kinetic energy or energy along every direction.
 
 #### Launch and live plot
 
-**Terminal 1:**
+**Terminal 1 - launch, including joint-limit plots:**
 
 ```bash
 roslaunch franka_example_controllers \
@@ -554,7 +561,7 @@ roslaunch franka_example_controllers \
   trajectory:=linear \
   start_trajectory:=true \
   cbf_active:=false \
-  Kmax:=20.0 \
+  Kmax:=0.0 \
   alpha:=1.0 \
   direction_x:=1.0 \
   direction_y:=0.0 \
@@ -565,59 +572,100 @@ roslaunch franka_example_controllers \
   record_cbf:=true \
   log_dir:="$HOME/Riccardo/franka_ws_013/data"
 ```
+Recording starts with the first `set_experiment_command` call. Core CBF data
+are recorded from then on; additional debug data are recorded with CBF active.
+Output directory: `~/Riccardo/franka_ws_013/data`.
 
-Keep the trailing backslash on every continued line except the last. Use an
-absolute `log_dir`; `home/user/...` without a leading `/` is a relative path.
 
-**Terminal 2:**
+**Terminal 2 - live energy:**
 
 ```bash
 rqt_plot /cbf_info/kinetic_energy /cbf_info/directional_kinetic_energy /cbf_info/Kmax
 ```
 
-#### Execute the test
+**Terminal 3**
 
-**Terminal 3 - forward, CBF off:**
+
+**Initial Configuration**
+
+```bash
+rosservice call /trajectory_publisher/initialize_joint_pose \
+"q: [0.0, -0.2, 0.0, -2.2, 0.0, 3.2, 0.785398163397]
+duration: 12.0"
+```
+
+**Forward, CBF off:**
 
 ```bash
 rosservice call /trajectory_publisher/set_experiment_command \
-"x_move: 0.20
-y_move: 0.0
+"x_move: 0.1
+y_move: 0.2
 z_move: 0.0
 cbf_active: false
-Kmax: 0.05
+Kmax: 0.02
 alpha: 1.0"
 ```
 
-**After settling - return, CBF off:**
+**Initial Configuration**
 
 ```bash
-rosservice call /trajectory_publisher/set_experiment_command \
-"x_move: -0.20
-y_move: 0.0
-z_move: 0.0
-cbf_active: false
-Kmax: 0.05
-alpha: 1.0"
+rosservice call /trajectory_publisher/initialize_joint_pose \
+"q: [0.0, -0.2, 0.0, -2.2, 0.0, 3.2, 0.785398163397]
+duration: 12.0"
 ```
 
-**After settling - forward, CBF on:**
+**Forward, CBF on, 1st alpha:**
 
 ```bash
 rosservice call /trajectory_publisher/set_experiment_command \
-"x_move: 0.20
-y_move: 0.0
+"x_move: 0.1
+y_move: 0.2
 z_move: 0.0
 cbf_active: true
-Kmax: 0.05
+Kmax: 0.02
 alpha: 1.0"
 ```
 
-These reproduce the commands in `how_to_run.md`; the displacement is an example,
-not a guarantee of avoiding joint stops or collisions for every initial posture.
-A failed directional CBF calculation aborts the task while keeping the node
-available. Read the reported error and submit a new experiment with revised
-parameters once the cause is resolved.
+**Initial Configuration**
+
+```bash
+rosservice call /trajectory_publisher/initialize_joint_pose \
+"q: [0.0, -0.2, 0.0, -2.2, 0.0, 3.2, 0.785398163397]
+duration: 12.0"
+```
+
+**Forward, CBF on, 2nd alpha::**
+
+```bash
+rosservice call /trajectory_publisher/set_experiment_command \
+"x_move: 0.1
+y_move: 0.2
+z_move: 0.0
+cbf_active: true
+Kmax: 0.02
+alpha: 5.0"
+```
+
+**Initial Configuration**
+
+```bash
+rosservice call /trajectory_publisher/initialize_joint_pose \
+"q: [0.0, -0.2, 0.0, -2.2, 0.0, 3.2, 0.785398163397]
+duration: 12.0"
+```
+
+**Forward, CBF on, 3rd alpha::**
+
+```bash
+rosservice call /trajectory_publisher/set_experiment_command \
+"x_move: 0.1
+y_move: 0.2
+z_move: 0.0
+cbf_active: true
+Kmax: 0.02
+alpha: 10.0"
+```
+
 
 #### Launch arguments
 
@@ -847,10 +895,79 @@ handoff keeps Cartesian experiment commands blocked and requests a joint hold;
 inspect the error and controller states before an explicit retry. There is no
 automatic error recovery or automatic restart of a failed experiment.
 
-### Run each experiment and return to the same joint pose
+### Run Experiments 
 
-The service interface is unchanged. This is the existing full test displacement;
-use it only after validating the smaller commissioning motion and path:
+**Terminal 1 - launch, including joint-limit plots:**
+
+```bash
+roslaunch franka_example_controllers \
+  cartesian_impedance_directional_kinetic_energy_cbf_controller.launch \
+  robot_ip:=172.16.0.2 \
+  robot:=fr3 \
+  load_gripper:=false \
+  cbf_active:=false \
+  Kmax:=0.02 \
+  alpha:=1.0 \
+  direction_x:=1.0 \
+  direction_y:=0.0 \
+  direction_z:=0.0 \
+  record_cbf:=false \
+  rosbag:=false \
+  rviz:=false
+```
+Recording starts with the first `set_experiment_command` call. Core CBF data
+are recorded from then on; additional debug data are recorded with CBF active.
+Output directory: `~/Riccardo/franka_ws_013/data`.
+
+
+**Terminal 2 - live energy:**
+
+```bash
+rqt_plot /cbf_info/kinetic_energy /cbf_info/directional_kinetic_energy /cbf_info/Kmax
+```
+
+**Terminal 3 - record data:**
+
+```bash
+rosbag record \
+  -o "$HOME/Riccardo/franka_ws_013/data/real/directional_cbf" \
+  /cbf_info \
+  /directional_cbf/diagnostics \
+  /directional_cbf/phase \
+  /franka_state_controller/franka_states \
+  /rosout
+```
+
+When ended stop the recordin bag with `Ctrl+C`. Find the name:
+
+```bash
+ls -lt ~/Riccardo/franka_ws_013/data/real/*.bag
+```
+
+Export the csv files (replacing `NOME_FILE.bag`):
+
+```bash
+BAG_PATH="$HOME/Riccardo/franka_ws_013/data/real/NOME_FILE.bag" 
+rostopic echo -b "$BAG_PATH" -p /directional_cbf/diagnostics \
+  > "${BAG_PATH%.bag}_diagnostics.csv"
+rostopic echo -b "$BAG_PATH" -p /franka_state_controller/franka_states \
+  > "${BAG_PATH%.bag}_robot_state.csv"
+rostopic echo -b "$BAG_PATH" -p /cbf_info \
+  > "${BAG_PATH%.bag}_cbf_info.csv"
+```
+
+**Terminal 4**
+
+
+**Initial Configuration**
+
+```bash
+rosservice call /trajectory_publisher/initialize_joint_pose \
+"q: [0.0, -0.2, 0.0, -2.2, 0.0, 3.2, 0.785398163397]
+duration: 12.0"
+```
+
+**Forward, CBF off:**
 
 ```bash
 rosservice call /trajectory_publisher/set_experiment_command \
@@ -862,80 +979,66 @@ Kmax: 0.02
 alpha: 1.0"
 ```
 
-A successful response acknowledges an atomic target/parameter request. It does
-**not** mean the movement has finished. Watch `task_aborted`, `solver_status`,
-`ee_target_distance` and measured `dq`; wait for settling, then call the exact
-`initialize_joint_pose` command above. The initializer rejects motion that is
-still underway. Repeat the movement with `cbf_active: true` and each of your three
-chosen `alpha` values, keeping the same `Kmax`, direction, gains, start pose and
-XYZ displacement. Call joint initialization after **every** movement, including
-the last. It resets the redundant arm's joints, unlike simply reversing XYZ.
-
-Displacements are relative to the previous commanded target, in the robot base
-frame, in metres. Without a reset they accumulate. `Kmax` is in joules and `alpha`
-in inverse seconds. The constrained direction is the fixed normalized launch
-vector, not automatically the movement vector. The impedance reference filter,
-not `publish_rate`, determines the movement's reference evolution.
-
-`initialize_joint_pose` explicitly disables CBF for the joint return. No
-directional-energy bound is claimed during that return. Afterward the controller
-stays in measured-pose hold until another explicit experiment request.
-
-Live plots:
+**Initial Configuration**
 
 ```bash
-rqt_plot /cbf_info/kinetic_energy \
-  /cbf_info/directional_kinetic_energy /cbf_info/Kmax
-rostopic echo /directional_cbf/diagnostics
+rosservice call /trajectory_publisher/initialize_joint_pose \
+"q: [0.0, -0.2, 0.0, -2.2, 0.0, 3.2, 0.785398163397]
+duration: 12.0"
 ```
 
-The correct field name is `directional_kinetic_energy`. The total kinetic energy
-can exceed `Kmax`: the barrier constrains the directional quantity. The launch
-also accepts `plot_energies:=true` and `plot_joint_limits:=true`.
-
-### Recorded data
-
-The first initialization/experiment creates a unique session under
-`~/.ros/directional_cbf_real` (override `log_dir:=...`). Subsequent services use
-the same session. Stop the launch cleanly to drain queues and finalize health
-counters. `record_cbf:=false` explicitly disables this recorder gate.
-
-| File | Meaning |
-| --- | --- |
-| `cbf.csv` | Same original columns, plus trailing hardware diagnostics. Joint debug is valid with CBF on **and off** on hardware. |
-| `robot_state.csv` | Joint position/velocity, measured and desired torque, EE transform, external torque/wrench estimates, contact/collision flags, errors, mode and communication success. Continues during the joint reset. |
-| `events.csv` | Initialization and experiment-request events, stamped at ROS reception. These are not synchronous controller samples or automatic motion-completion events. |
-| `metadata.json`, `robot.urdf` | Parameters and model used by the session. |
-| `robot_model_state.json` | Initial robot-reported load, tool and frame configuration. |
-| `health.json` | Queue drops, diagnostics gaps, state sequence gaps, stream age and clean-shutdown state. |
-
-There is **no `contacts.csv` on hardware**: Gazebo collision-pair contact forces
-have no identical physical sensor counterpart. Franka's estimated external wrench
-and contact flags are recorded as their own signals. With `rosbag:=true`, a bag
-of CBF, state, phase and ROS log topics is recorded from launch as well; by default
-only CSV is enabled. `bag_prefix` specifies its output prefix.
-
-CBF diagnostics pause while the joint controller owns the arm. Do not interpolate
-that gap as zero energy or evidence that the CBF remained active. Use the continuous
-state CSV and phase events to identify resets. They have different sampling and
-timestamp semantics; a reception timestamp is not an exact synchronized pairing.
-
-`tau_command` is the controller's raw gravity-free request. `tau_predicted` is the
-predicted next libfranka desired torque after soft limits, filtering and rate
-limiting. `tau_J_d` is the current desired torque reported by the robot;
-`torque_prediction_error` compares it with the previous cycle's prediction.
-`tau_J` is measured joint torque and includes gravity. Do not compare `tau_J`
-directly with the gravity-free values as an actuator tracking error.
-
-The existing root plotting script accepts the unchanged core columns:
+**Forward, CBF on, 1st alpha:**
 
 ```bash
-python3 plot_directional_cbf.py /path/to/experiment_session --no-show
+rosservice call /trajectory_publisher/set_experiment_command \
+"x_move: 0.1
+y_move: 0.2
+z_move: 0.0
+cbf_active: true
+Kmax: 0.02
+alpha: 1.0"
 ```
 
-It retains the multiple-alpha comparison. Use its experiment-ID selection when
-you want to exclude hold/reset intervals; IDs also increment for prepared holds,
-so don't assume consecutive experiment IDs are all movement trials.
+**Initial Configuration**
+
+```bash
+rosservice call /trajectory_publisher/initialize_joint_pose \
+"q: [0.0, -0.2, 0.0, -2.2, 0.0, 3.2, 0.785398163397]
+duration: 12.0"
+```
+
+**Forward, CBF on, 2nd alpha::**
+
+```bash
+rosservice call /trajectory_publisher/set_experiment_command \
+"x_move: 0.1
+y_move: 0.2
+z_move: 0.0
+cbf_active: true
+Kmax: 0.02
+alpha: 5.0"
+```
+
+**Initial Configuration**
+
+```bash
+rosservice call /trajectory_publisher/initialize_joint_pose \
+"q: [0.0, -0.2, 0.0, -2.2, 0.0, 3.2, 0.785398163397]
+duration: 12.0"
+```
+
+**Forward, CBF on, 3rd alpha::**
+
+```bash
+rosservice call /trajectory_publisher/set_experiment_command \
+"x_move: 0.1
+y_move: 0.2
+z_move: 0.0
+cbf_active: true
+Kmax: 0.02
+alpha: 10.0"
+```
+
 
 ## Plot data
 

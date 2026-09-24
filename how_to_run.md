@@ -5,24 +5,27 @@ Workspace: `~/Riccardo/franka_ws_013` - ROS Noetic / Gazebo.
 ## Compile
  
 ```bash  
- source /opt/ros/noetic/setup.bash
- 
- export CC=/usr/bin/gcc-10
- export CXX=/usr/bin/g++-10
- export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
- 
- catkin_make install \
--DCMAKE_C_COMPILER=/usr/bin/gcc-10 \
--DCMAKE_CXX_COMPILER=/usr/bin/g++-10 \
--DCMAKE_CXX_STANDARD=17 \
--DCMAKE_CXX_STANDARD_REQUIRED=ON \
--DCMAKE_CXX_EXTENSIONS=OFF \
--DABSL_PROPAGATE_CXX_STD=ON \
--DABSL_BUILD_TESTING=OFF \
--DOSQP-CPP_BUILD_TESTS=OFF \
--DCMAKE_PREFIX_PATH="$FRANKA_013_PREFIX;/opt/ros/noetic" \
--DCMAKE_BUILD_TYPE=Release \
--DCATKIN_ENABLE_TESTING=OFF
+cd ~/Riccardo/franka_ws_013
+
+source /opt/ros/noetic/setup.bash
+
+export CC=/usr/bin/gcc-10
+export CXX=/usr/bin/g++-10
+export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
+
+catkin_make install --force-cmake \
+  -DCMAKE_C_COMPILER=/usr/bin/gcc-10 \
+  -DCMAKE_CXX_COMPILER=/usr/bin/g++-10 \
+  -DCMAKE_CXX_STANDARD=17 \
+  -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+  -DCMAKE_CXX_EXTENSIONS=OFF \
+  -DABSL_PROPAGATE_CXX_STD=ON \
+  -DABSL_BUILD_TESTING=OFF \
+  -DOSQP-CPP_BUILD_TESTS=OFF \
+  -DFranka_DIR="$FRANKA_013_PREFIX/lib/cmake/Franka" \
+  -DCMAKE_PREFIX_PATH="$FRANKA_013_PREFIX;/opt/ros/noetic" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCATKIN_ENABLE_TESTING=ON
 
 cp -a devel/lib/libabsl*.so* install/lib/
 
@@ -30,7 +33,12 @@ source /opt/ros/noetic/setup.bash
 source ~/Riccardo/franka_ws_013/install/setup.bash
 
 export FRANKA_013_PREFIX="$HOME/Riccardo/libfranka-0.13.3/install"
+
 export LD_LIBRARY_PATH="$HOME/Riccardo/franka_ws_013/install/lib:$FRANKA_013_PREFIX/lib:/opt/ros/noetic/lib:/opt/ros/noetic/lib/x86_64-linux-gnu"
+
+grep -R -n -E '/opt/ros/noetic/include/franka/(robot|robot_state)\.h' build/franka_ros --include='*.o.d'
+
+ldd install/lib/libfranka_hw.so | grep -E 'libfranka\.so|not found'
 ```
 
 If needed, you can remove everything before (optional): 

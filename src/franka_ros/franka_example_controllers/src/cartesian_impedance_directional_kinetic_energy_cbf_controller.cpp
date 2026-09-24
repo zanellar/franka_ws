@@ -543,8 +543,22 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
                                              robot_state.tau_J_d,hardware_cutoff_,hardware_rate_);
     prediction_error_=have_prediction_ ?
         (Eigen::Map<const Vector7d>(robot_state.tau_J_d.data())-previous_prediction_).norm() : 0.0;
-    if (!hardware_envelope_.valid || !std::isfinite(period.toSec()) || period.toSec()<=0 ||
-        period.toSec()>max_period_seconds_) task_state_.fail(7);
+    const double control_period = period.toSec();
+    const bool invalid_envelope = !hardware_envelope_.valid;
+    const bool invalid_period =
+        !std::isfinite(control_period) || control_period <= 0.0;
+    const bool late_period =
+        !invalid_period && control_period > max_period_seconds_;
+
+    if (invalid_envelope && (invalid_period || late_period)) {
+      task_state_.fail(11);  // Both hardware envelope and timing invalid.
+    } else if (invalid_envelope) {
+      task_state_.fail(7);   // Hardware torque envelope invalid.
+    } else if (invalid_period) {
+      task_state_.fail(9);   // Nonfinite or nonpositive control period.
+    } else if (late_period) {
+      task_state_.fail(10);  // Control period exceeds max_period_seconds.
+    }
   }
   // Continue diagnostics while aborted, but do not solve or resume on a
   // periodic pose message. Only start_experiment can request another attempt.

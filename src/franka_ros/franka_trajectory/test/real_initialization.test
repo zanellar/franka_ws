@@ -9,5 +9,5 @@
     <param name="initialization_wall_timeout" value="10.0"/>
   </node>
   <test pkg="franka_trajectory" type="real_initialization_ros_test.py"
-        name="real_initialization_test" time-limit="60"/>
+        test-name="real_initialization_test" time-limit="60"/>
 </launch>
