@@ -55,28 +55,53 @@ inline Seven predict(const Envelope& e, const Seven& raw) {
   }
   return out;
 }
+// Diagnostic only: reason codes do not change any solver predicate/tolerance.
+enum class ProjectionReason : unsigned char {
+  None=0, NonfiniteInput=1, InvalidBox=2, ZeroNormalInfeasible=3,
+  BoxInfeasible=4, NumericalFailure=5, InvalidEnvelope=6
+};
+struct ProjectionReport {
+  ProjectionReason reason{ProjectionReason::None};
+  double maximum_lhs{std::numeric_limits<double>::quiet_NaN()};
+  double maximum_residual{std::numeric_limits<double>::quiet_NaN()};
+};
 // Exact strictly convex QP: min ||x-nominal||^2, lo<=x<=hi, a*x>=rhs.
 // KKT: x(lambda)=clip(nominal+lambda*a,lo,hi). Fixed-size, allocation-free,
 // at most 80 bisections; no OSQP setup/allocation inside the hardware callback.
 inline bool project(const Seven& nominal,const Seven& lo,const Seven& hi,
-                    const Seven& a,double rhs,Seven& solution) {
-  if (!std::isfinite(rhs)) return false;
+                    const Seven& a,double rhs,Seven& solution, ProjectionReport* report=nullptr) {
+  if (report) *report=ProjectionReport{};
+  const auto fail=[report](ProjectionReason reason) {
+    if (report) report->reason=reason;
+    return false;
+  };
+  if (!std::isfinite(rhs)) return fail(ProjectionReason::NonfiniteInput);
   double scale=0.0;
   for(size_t i=0;i<7;++i) {
     if(!std::isfinite(nominal[i]) || !std::isfinite(lo[i]) || !std::isfinite(hi[i]) ||
-       !std::isfinite(a[i]) || lo[i]>hi[i]) return false;
+       !std::isfinite(a[i])) return fail(ProjectionReason::NonfiniteInput);
+    if (lo[i]>hi[i]) return fail(ProjectionReason::InvalidBox);
     solution[i]=clip(nominal[i],lo[i],hi[i]); scale=std::max(scale,std::abs(a[i]));
   }
-  if(scale==0.0) return rhs<=0.0;
+  if(scale==0.0) {
+    if (report) { report->maximum_lhs=0.0; report->maximum_residual=-rhs; }
+    if (rhs<=0.0) return true;
+    return fail(ProjectionReason::ZeroNormalInfeasible);
+  }
   Seven n{}; double r=rhs/scale, value=0, maximum=0, high=0;
-  if(!std::isfinite(r)) return false;
+  if(!std::isfinite(r)) return fail(ProjectionReason::NumericalFailure);
   for(size_t i=0;i<7;++i) {
     n[i]=a[i]/scale; value+=n[i]*solution[i];
     const double endpoint=n[i]>=0 ? hi[i] : lo[i]; maximum+=n[i]*endpoint;
     if(n[i]!=0) high=std::max(high,(endpoint-nominal[i])/n[i]);
   }
+  if (report) {
+    report->maximum_lhs=maximum*scale;
+    report->maximum_residual=(maximum-r)*scale;
+  }
   if(value>=r) return true;
-  if(maximum<r || !std::isfinite(high)) return false;
+  if(maximum<r) return fail(ProjectionReason::BoxInfeasible);
+  if(!std::isfinite(high)) return fail(ProjectionReason::NumericalFailure);
   double low=0;
   for(int iteration=0;iteration<80;++iteration) {
     const double middle=low+(high-low)*0.5; double achieved=0;
@@ -85,6 +110,30 @@ inline bool project(const Seven& nominal,const Seven& lo,const Seven& hi,
   }
   for(size_t i=0;i<7;++i) solution[i]=clip(nominal[i]+high*n[i],lo[i],hi[i]);
   return true;  // Controller rechecks the ORIGINAL physical residual/tolerance.
+}
+// Weighted projection: min sum((x_i-nominal_i)^2 / inverse_weights_i).
+// Whitening is a change of coordinates, not a post-QP filter. Thus the same
+// box and halfspace are enforced. Positive weights are mandatory.
+inline bool projectWeighted(const Seven& nominal,const Seven& lo,const Seven& hi,
+                            const Seven& a,double rhs,const Seven& inverse_weights,
+                            Seven& solution,ProjectionReport* report=nullptr) {
+  Seven root{},n{},l{},u{},coeff{},y{};
+  bool identity=true;
+  for (size_t i=0;i<7;++i) {
+    const double w=inverse_weights[i];
+    if (!std::isfinite(w) || w<=0) {
+      if (report) { *report=ProjectionReport{}; report->reason=ProjectionReason::NonfiniteInput; }
+      return false;
+    }
+    identity=identity && w==1.0;
+    root[i]=std::sqrt(w);
+    n[i]=nominal[i]/root[i]; l[i]=lo[i]/root[i]; u[i]=hi[i]/root[i];
+    coeff[i]=a[i]*root[i];
+  }
+  if (identity) return project(nominal,lo,hi,a,rhs,solution,report);
+  if (!project(n,l,u,coeff,rhs,y,report)) return false;
+  for (size_t i=0;i<7;++i) solution[i]=clip(root[i]*y[i],lo[i],hi[i]);
+  return true;  // Physical residual is still checked by the controller.
 }
 }  // namespace hardware_cbf
 }  // namespace franka_example_controllers

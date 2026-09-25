@@ -89,12 +89,51 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   realtime_tools::RealtimeBuffer<HardwareRequest> hardware_buffer_;
   uint64_t hardware_sequence_{0};
   bool real_robot_{false};
+  std::string total_energy_qp_metric_{"identity"};
+  hardware_cbf::Seven qp_inverse_weights_{{1,1,1,1,1,1,1}};
   bool batching_hardware_request_{false};
   double hardware_cutoff_{100}, hardware_rate_{999.0};
   double derivative_filter_alpha_{0.05};
   double max_update_seconds_{0.0009}, max_period_seconds_{0.002};
   std::array<hardware_cbf::JointLimits, 7> hardware_limits_{};
   hardware_cbf::Envelope hardware_envelope_;
+  // Frozen first failed hardware projection in the current experiment.
+  // Fixed-size storage only; no logging/allocation in the realtime callback.
+  struct QpFailureSnapshot {
+    bool valid{false};
+    ros::Time stamp;
+    uint64_t sample_index{0}, experiment_id{0};
+    uint8_t reason{0}, energy_mode{0};
+    double h{std::numeric_limits<double>::quiet_NaN()};
+    double alpha{std::numeric_limits<double>::quiet_NaN()};
+    double Kmax{std::numeric_limits<double>::quiet_NaN()};
+    double barrier_b{std::numeric_limits<double>::quiet_NaN()};
+    double rhs{std::numeric_limits<double>::quiet_NaN()};
+    double max_lhs{std::numeric_limits<double>::quiet_NaN()};
+    double max_residual{std::numeric_limits<double>::quiet_NaN()};
+    double filter_gain{std::numeric_limits<double>::quiet_NaN()};
+    double torque_rate{std::numeric_limits<double>::quiet_NaN()};
+    double dt{std::numeric_limits<double>::quiet_NaN()};
+    double kinetic_energy_total{std::numeric_limits<double>::quiet_NaN()};
+    double kinetic_energy_dir{std::numeric_limits<double>::quiet_NaN()};
+    double command_success_rate{std::numeric_limits<double>::quiet_NaN()};
+    hardware_cbf::Seven q{};
+    hardware_cbf::Seven dq{};
+    hardware_cbf::Seven coriolis{};
+    hardware_cbf::Seven barrier_a{};
+    hardware_cbf::Seven nominal_tau{};
+    hardware_cbf::Seven previous_tau{};
+    hardware_cbf::Seven lower{};
+    hardware_cbf::Seven upper{};
+    hardware_cbf::Seven soft_lower{};
+    hardware_cbf::Seven soft_upper{};
+    hardware_cbf::Seven coefficients{};
+  };
+  QpFailureSnapshot qp_failure_;
+  // Diagnostic shadow of the legacy velocity slew limiter, never used in control.
+  // Legacy dq_saturated was uninitialized: seed explicitly from measured dq.
+  Vector7d replay_dq_rate_limited_{Vector7d::Zero()};
+
   Vector7d hardware_coriolis_{Vector7d::Zero()};
   Vector7d predicted_torque_{Vector7d::Zero()};
   Vector7d previous_prediction_{Vector7d::Zero()};

@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <launch>
+  <arg name="total_energy_qp_metric" default="identity"/>
   <!-- Same experiment lifecycle, nominal law and hardware settings as B. -->
   <arg name="robot_ip" />
   <arg name="robot" default="fr3" />

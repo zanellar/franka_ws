@@ -62,3 +62,64 @@ float64 cbf_constraint_nom
 # Both controls exclude Coriolis. u_safe is NaN during abort.
 float64[7] u_nom
 float64[7] u_safe
+
+# Frozen FIRST failed real-hardware projection (solver_status=5).
+# Reset by controller starting() or the next consumed start_experiment request.
+# Inspect only when valid=true; other diagnostics still describe CURRENT state.
+# reason: 1 nonfinite input, 2 invalid box, 3 zero normal infeasible,
+# 4 box/CBF infeasible, 5 numerical failure, 6 invalid envelope.
+# Raw decision x is torque including Coriolis, excluding gravity.
+# Constraint: coefficients*x >= rhs. max_residual=max(coefficients*x-rhs)
+# over lower<=x<=upper; same units as h_dot+alpha*h (J/s).
+bool qp_failure_valid
+time qp_failure_stamp
+uint64 qp_failure_sample_index
+uint64 qp_failure_experiment_id
+uint8 qp_failure_reason
+uint8 qp_failure_energy_mode
+float64 qp_failure_h
+float64 qp_failure_alpha
+float64 qp_failure_Kmax
+float64 qp_failure_barrier_b
+float64 qp_failure_rhs
+float64 qp_failure_max_lhs
+float64 qp_failure_max_residual
+float64 qp_failure_filter_gain
+float64 qp_failure_torque_rate
+float64 qp_failure_dt
+float64 qp_failure_kinetic_energy_total
+float64 qp_failure_kinetic_energy_dir
+float64 qp_failure_command_success_rate
+float64[7] qp_failure_q
+float64[7] qp_failure_dq
+float64[7] qp_failure_coriolis
+float64[7] qp_failure_barrier_a
+float64[7] qp_failure_nominal_tau
+float64[7] qp_failure_previous_tau
+float64[7] qp_failure_lower
+float64[7] qp_failure_upper
+float64[7] qp_failure_soft_lower
+float64[7] qp_failure_soft_upper
+float64[7] qp_failure_coefficients
+
+# Synchronous model for offline replay (not the frozen failure snapshot).
+bool model_valid
+# Eigen column-major order: M(row,col)=model_mass[row+7*col].
+float64[49] model_mass
+float64[7] model_coriolis
+float64[7] model_gravity
+# Diagnostic legacy slew limiter, seeded with measured dq at controller starting.
+# Updated every callback, including CBF off; no reset on experiment requests.
+float64[7] model_dq_rate_limited
+# Raw torque bounds including Coriolis, excluding gravity (real runtime only).
+bool replay_qp_envelope_valid
+float64[7] replay_qp_lower
+float64[7] replay_qp_upper
+float64 replay_qp_filter_gain
+float64[7] replay_soft_lower
+float64[7] replay_soft_upper
+
+# QP cost: sum((tau_i-tau_nom_i)^2/replay_qp_inverse_weights_i).
+# 0 identity (original), 1 normalized diagonal mass (real total-energy only).
+uint8 total_energy_qp_metric
+float64[7] replay_qp_inverse_weights

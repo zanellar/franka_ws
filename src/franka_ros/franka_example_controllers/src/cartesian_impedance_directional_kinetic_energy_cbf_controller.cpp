@@ -56,6 +56,13 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::readParameters(
         !std::isfinite(max_update_seconds_) || max_update_seconds_<=0 ||
         !std::isfinite(max_period_seconds_) || max_period_seconds_<0.001) return false;
   }
+  node_handle.param<std::string>("total_energy_qp_metric", total_energy_qp_metric_, "identity");
+  if (total_energy_qp_metric_ != "identity" && total_energy_qp_metric_ != "inertia_diagonal") {
+    ROS_ERROR("total_energy_qp_metric must be identity or inertia_diagonal"); return false;
+  }
+  if (total_energy_qp_metric_ != "identity" && (!real_robot_ || !limitsTotalEnergy())) {
+    ROS_ERROR("inertia_diagonal is supported only by the real total-energy controller"); return false;
+  }
   if (!node_handle.getParam("/alpha", alpha_)) {
     ROS_ERROR_STREAM(
         "CartesianImpedanceDirectionalKineticEnergyCBFController: Could not read parameter alpha");
@@ -391,7 +398,9 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::starting(
     const ros::Time& /*time*/) {
   std::unique_lock<std::recursive_mutex> lock(control_mutex_, std::defer_lock);
   if (!real_robot_) lock.lock();
+  qp_failure_ = QpFailureSnapshot{};
   const franka::RobotState initial_state = state_handle_->getRobotState();
+  replay_dq_rate_limited_ = Eigen::Map<const Vector7d>(initial_state.dq.data());
   const std::array<double, 49> mass_array = model_handle_->getMass();
   const std::array<double, 42> jacobian_array =
       model_handle_->getZeroJacobian(franka::Frame::kEndEffector);
@@ -456,6 +465,15 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   const Matrix6x7d jacobian = Eigen::Map<const Matrix6x7d>(jacobian_array.data());
   const Vector7d q = Eigen::Map<const Vector7d>(robot_state.q.data());
   const Vector7d dq = Eigen::Map<const Vector7d>(robot_state.dq.data());
+  // Exactly the old per-update increments (not scaled by actual period).
+  // Keep history across experiment requests; reset only in starting().
+  const std::array<double,7> legacy_dq_step{{0.018,0.009,0.012,0.015,0.018,0.024,0.024}};
+  for (size_t i=0;i<7;++i) {
+    if (std::isfinite(dq(i)) && std::isfinite(replay_dq_rate_limited_(i))) {
+      replay_dq_rate_limited_(i) += std::max(-legacy_dq_step[i],
+          std::min(legacy_dq_step[i],dq(i)-replay_dq_rate_limited_(i)));
+    } else replay_dq_rate_limited_(i)=dq(i);
+  }
   const Vector7d tau_J = Eigen::Map<const Vector7d>(robot_state.tau_J.data());
 
   // Total joint-space kinetic energy, published for diagnostics.
@@ -468,6 +486,7 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   Eigen::Quaterniond orientation(transform.rotation());
 
   if (task_state_.consumeStartRequest()) {
+    qp_failure_ = QpFailureSnapshot{};
     ++experiment_id_;
     // Restart from the measured pose; keep the new requested target.
     position_d_ = position;
@@ -566,6 +585,18 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   const CbfResult cbf_result = directionalKineticEnergyCbf(
       u_nominal, torque_offset, coriolis, mass, jacobian, dq, period.toSec(),
       cbf_active_ && !task_state_.aborted());
+  if (real_robot_ && cbf_result.solver_status == 5 && !qp_failure_.valid) {
+    qp_failure_.valid=true;
+    qp_failure_.stamp=time;
+    qp_failure_.sample_index=diagnostic_sample_index_;
+    qp_failure_.experiment_id=experiment_id_;
+    qp_failure_.dt=period.toSec();
+    qp_failure_.kinetic_energy_total=kinetic_energy;
+    qp_failure_.kinetic_energy_dir=cbf_result.directional_kinetic_energy;
+    qp_failure_.command_success_rate=robot_state.control_command_success_rate;
+    std::copy(q.data(),q.data()+7,qp_failure_.q.begin());
+    std::copy(dq.data(),dq.data()+7,qp_failure_.dq.begin());
+  }
   if (!task_state_.aborted() && cbf_result.solver_status >= 3) {
     task_state_.fail(cbf_result.solver_status);
     if (!real_robot_) ROS_ERROR_STREAM("Directional experiment ABORTED (status "
@@ -690,6 +721,61 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
     diagnostic.header.frame_id = base_frame_;
     diagnostic.sample_index = sample_index;
     diagnostic.experiment_id = experiment_id_;
+    diagnostic.qp_failure_valid=qp_failure_.valid;
+    diagnostic.qp_failure_stamp=qp_failure_.stamp;
+    diagnostic.qp_failure_sample_index=qp_failure_.sample_index;
+    diagnostic.qp_failure_experiment_id=qp_failure_.experiment_id;
+    diagnostic.qp_failure_reason=qp_failure_.reason;
+    diagnostic.qp_failure_energy_mode=qp_failure_.energy_mode;
+    diagnostic.qp_failure_h=qp_failure_.h;
+    diagnostic.qp_failure_alpha=qp_failure_.alpha;
+    diagnostic.qp_failure_Kmax=qp_failure_.Kmax;
+    diagnostic.qp_failure_barrier_b=qp_failure_.barrier_b;
+    diagnostic.qp_failure_rhs=qp_failure_.rhs;
+    diagnostic.qp_failure_max_lhs=qp_failure_.max_lhs;
+    diagnostic.qp_failure_max_residual=qp_failure_.max_residual;
+    diagnostic.qp_failure_filter_gain=qp_failure_.filter_gain;
+    diagnostic.qp_failure_torque_rate=qp_failure_.torque_rate;
+    diagnostic.qp_failure_dt=qp_failure_.dt;
+    diagnostic.qp_failure_kinetic_energy_total=qp_failure_.kinetic_energy_total;
+    diagnostic.qp_failure_kinetic_energy_dir=qp_failure_.kinetic_energy_dir;
+    diagnostic.qp_failure_command_success_rate=qp_failure_.command_success_rate;
+    for (size_t i=0;i<7;++i) {
+      diagnostic.qp_failure_q[i]=qp_failure_.q[i];
+      diagnostic.qp_failure_dq[i]=qp_failure_.dq[i];
+      diagnostic.qp_failure_coriolis[i]=qp_failure_.coriolis[i];
+      diagnostic.qp_failure_barrier_a[i]=qp_failure_.barrier_a[i];
+      diagnostic.qp_failure_nominal_tau[i]=qp_failure_.nominal_tau[i];
+      diagnostic.qp_failure_previous_tau[i]=qp_failure_.previous_tau[i];
+      diagnostic.qp_failure_lower[i]=qp_failure_.lower[i];
+      diagnostic.qp_failure_upper[i]=qp_failure_.upper[i];
+      diagnostic.qp_failure_soft_lower[i]=qp_failure_.soft_lower[i];
+      diagnostic.qp_failure_soft_upper[i]=qp_failure_.soft_upper[i];
+      diagnostic.qp_failure_coefficients[i]=qp_failure_.coefficients[i];
+    }
+    // Synchronous model and hardware box for offline TOTAL-energy QP replay.
+    // No second QP or file I/O in the realtime thread.
+    diagnostic.model_valid=mass.allFinite() && coriolis.allFinite() && gravity.allFinite();
+    for (size_t i=0;i<49;++i) diagnostic.model_mass[i]=mass.data()[i];
+    for (size_t i=0;i<7;++i) {
+      diagnostic.model_coriolis[i]=coriolis(i);
+      diagnostic.model_gravity[i]=gravity(i);
+      diagnostic.model_dq_rate_limited[i]=replay_dq_rate_limited_(i);
+      diagnostic.replay_soft_lower[i]=real_robot_ ? hardware_envelope_.soft_lower[i]
+          : std::numeric_limits<double>::quiet_NaN();
+      diagnostic.replay_soft_upper[i]=real_robot_ ? hardware_envelope_.soft_upper[i]
+          : std::numeric_limits<double>::quiet_NaN();
+      diagnostic.replay_qp_lower[i]=real_robot_ ? hardware_envelope_.lower[i]
+          : std::numeric_limits<double>::quiet_NaN();
+      diagnostic.replay_qp_upper[i]=real_robot_ ? hardware_envelope_.upper[i]
+          : std::numeric_limits<double>::quiet_NaN();
+    }
+    diagnostic.total_energy_qp_metric=(real_robot_ && limitsTotalEnergy() &&
+        total_energy_qp_metric_ == "inertia_diagonal") ? 1 : 0;
+    for (size_t i=0;i<7;++i) diagnostic.replay_qp_inverse_weights[i]=qp_inverse_weights_[i];
+    diagnostic.replay_qp_envelope_valid=real_robot_ && hardware_envelope_.valid;
+    diagnostic.replay_qp_filter_gain=real_robot_ ? hardware_envelope_.gain
+        : std::numeric_limits<double>::quiet_NaN();
     diagnostic.dt = period.toSec();
     diagnostic.cbf_h = cbf_result.h;
     diagnostic.energy_mode = limitsTotalEnergy() ? 0 : 1;
@@ -936,6 +1022,19 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
   result.barrier_b = b;
   result.barrier_model_valid = a.allFinite() && std::isfinite(b) && std::isfinite(h);
 
+  qp_inverse_weights_.fill(1.0);
+  if (real_robot_ && limitsTotalEnergy() && total_energy_qp_metric_ == "inertia_diagonal") {
+    // Diagonal kinetic metric: positive because M has passed the SPD check.
+    // Common normalization changes no optimizer, and improves numerical scale.
+    const double scale=mass.diagonal().maxCoeff();
+    for (int i=0;i<7;++i) {
+      qp_inverse_weights_[i]=mass(i,i)/scale;
+      if (!std::isfinite(qp_inverse_weights_[i]) || qp_inverse_weights_[i]<=0) {
+        result.solver_status=3; return result;
+      }
+    }
+  }
+
   // Diagnostics also describe nominal and abort commands. Enforcement is unchanged.
   if (!enforce_cbf) {
     result.solver_status = 0;
@@ -961,10 +1060,33 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
       coefficients[i]=beta*a(i);
       rhs-=a(i)*((1-beta)*hardware_envelope_.previous[i]-hardware_coriolis_(i));
     }
-    const bool solved=hardware_envelope_.valid && hardware_cbf::project(nominal,
-        hardware_envelope_.lower,hardware_envelope_.upper,coefficients,rhs,solution);
+    hardware_cbf::ProjectionReport report;
+    const bool solved=hardware_envelope_.valid && hardware_cbf::projectWeighted(nominal,
+        hardware_envelope_.lower,hardware_envelope_.upper,coefficients,rhs,
+        qp_inverse_weights_,solution,&report);
     qp_time_us_=std::chrono::duration<double,std::micro>(std::chrono::steady_clock::now()-begin).count();
-    if (!solved) { result.solver_status=5; return result; }
+    if (!solved) {
+      if (!qp_failure_.valid) {
+        qp_failure_.reason=static_cast<uint8_t>(hardware_envelope_.valid
+            ? report.reason : hardware_cbf::ProjectionReason::InvalidEnvelope);
+        qp_failure_.energy_mode=limitsTotalEnergy() ? 0 : 1;
+        qp_failure_.h=h; qp_failure_.alpha=alpha_; qp_failure_.Kmax=Kmax_;
+        qp_failure_.barrier_b=b; qp_failure_.rhs=rhs;
+        qp_failure_.max_lhs=report.maximum_lhs;
+        qp_failure_.max_residual=report.maximum_residual;
+        qp_failure_.filter_gain=beta; qp_failure_.torque_rate=hardware_rate_;
+        qp_failure_.nominal_tau=nominal;
+        qp_failure_.coefficients=coefficients;
+        qp_failure_.previous_tau=hardware_envelope_.previous;
+        qp_failure_.lower=hardware_envelope_.lower;
+        qp_failure_.upper=hardware_envelope_.upper;
+        qp_failure_.soft_lower=hardware_envelope_.soft_lower;
+        qp_failure_.soft_upper=hardware_envelope_.soft_upper;
+        std::copy(a.data(),a.data()+7,qp_failure_.barrier_a.begin());
+        std::copy(hardware_coriolis_.data(),hardware_coriolis_.data()+7,qp_failure_.coriolis.begin());
+      }
+      result.solver_status=5; return result;
+    }
     const auto predicted=hardware_cbf::predict(hardware_envelope_,solution);
     result.constraint_qp=(a*(Eigen::Map<const Vector7d>(predicted.data())-hardware_coriolis_))(0,0)+b+alpha_*h;
     if (!DirectionalCbfTaskState::acceptsSolution(true,result.constraint_qp,cbf_residual_tolerance_)) {
@@ -1171,4 +1293,3 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::equilibriumPoseCal
 PLUGINLIB_EXPORT_CLASS(
     franka_example_controllers::CartesianImpedanceDirectionalKineticEnergyCBFController,
     controller_interface::ControllerBase)
-

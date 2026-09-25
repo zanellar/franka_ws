@@ -58,13 +58,46 @@ class CsvRows:
                     msg.solver_status, missing, msg.header.frame_id, msg.kinetic_energy_total,
                 ] + list(msg.ee_position) + list(msg.target_position) + [
                     msg.ee_target_distance, msg.ee_reference_distance,
-                ] + [msg.energy_mode, msg.cbf_constraint_nom] + list(msg.u_nom) + list(msg.u_safe)
+                ] + [msg.energy_mode, msg.cbf_constraint_nom] + list(msg.u_nom) + list(msg.u_safe) + qp_failure_row(msg) + model_row(msg)
 
 
 
 COMMON_FIELDS = ['energy_mode', 'cbf_constraint_nom'] + [
     '{}_{}'.format(name, i) for name in ('u_nom', 'u_safe') for i in range(1, 8)]
 FIELDS += COMMON_FIELDS
+
+QP_FAILURE_SCALARS = ['valid', 'sample_index', 'experiment_id', 'reason', 'energy_mode', 'h', 'alpha', 'Kmax', 'barrier_b', 'rhs', 'max_lhs', 'max_residual', 'filter_gain', 'torque_rate', 'dt', 'kinetic_energy_total', 'kinetic_energy_dir', 'command_success_rate']
+QP_FAILURE_ARRAYS = ['q', 'dq', 'coriolis', 'barrier_a', 'nominal_tau', 'previous_tau', 'lower', 'upper', 'soft_lower', 'soft_upper', 'coefficients']
+QP_FAILURE_FIELDS = ['qp_failure_stamp_ns'] + [
+    'qp_failure_' + name for name in QP_FAILURE_SCALARS] + [
+    'qp_failure_{}_{}'.format(name,i) for name in QP_FAILURE_ARRAYS for i in range(1,8)]
+FIELDS += QP_FAILURE_FIELDS
+MODEL_ARRAYS = {'model_mass': 49, 'model_coriolis': 7, 'model_gravity': 7,
+                'model_dq_rate_limited': 7, 'replay_qp_lower': 7, 'replay_qp_upper': 7, 'replay_soft_lower': 7, 'replay_soft_upper': 7, 'replay_qp_inverse_weights': 7}
+MODEL_FIELDS = ['model_valid', 'replay_qp_envelope_valid', 'replay_qp_filter_gain', 'total_energy_qp_metric'] + [
+    '{}_{}'.format(name,i) for name,count in MODEL_ARRAYS.items() for i in range(1,count+1)]
+FIELDS += MODEL_FIELDS
+
+
+def model_row(msg):
+    row = [getattr(msg,'model_valid',False), getattr(msg,'replay_qp_envelope_valid',False),
+           getattr(msg,'replay_qp_filter_gain',float('nan')), getattr(msg,'total_energy_qp_metric',0)]
+    for name,count in MODEL_ARRAYS.items():
+        row += list(getattr(msg,name,[float('nan')]*count))
+    return row
+
+
+
+def qp_failure_row(msg):
+    # Older fixture/messages remain readable; absence is explicitly invalid.
+    stamp = getattr(msg, 'qp_failure_stamp', None)
+    row = [stamp.to_nsec() if stamp is not None else 0]
+    row += [getattr(msg, 'qp_failure_' + name, False if name == 'valid' else float('nan'))
+            for name in QP_FAILURE_SCALARS]
+    for name in QP_FAILURE_ARRAYS:
+        row += list(getattr(msg, 'qp_failure_' + name, [float('nan')] * 7))
+    return row
+
 
 DEBUG_FIELDS = ['debug_valid', 'robot_mode'] + [
     '{}_{}'.format(name, i) for name in ('q', 'dq', 'tau_command') for i in range(1, 8)

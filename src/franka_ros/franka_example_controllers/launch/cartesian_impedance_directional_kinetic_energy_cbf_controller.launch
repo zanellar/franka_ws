@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <launch>
+  <arg name="total_energy_qp_metric" default="identity"/>
   <arg name="robot_ip"/>
   <arg name="controller_name" default="cartesian_impedance_directional_kinetic_energy_cbf_controller"/>
   <arg name="robot" default="fr3"/>
@@ -50,6 +51,7 @@
     <param name="runtime_environment" value="real"/>
     <param name="derivative_filter_alpha" value="$(arg derivative_filter_alpha)" type="double"/>
     <param name="hardware_torque_rate" value="999.0"/>
+    <param name="total_energy_qp_metric" value="$(arg total_energy_qp_metric)"/>
     <param name="max_update_seconds" value="0.0009"/>
     <param name="max_period_seconds" value="0.002"/>
   </group>
