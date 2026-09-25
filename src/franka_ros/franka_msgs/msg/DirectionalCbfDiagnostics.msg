@@ -2,6 +2,11 @@
 std_msgs/Header header
 uint64 sample_index
 uint64 experiment_id
+# 0=directional, 1=total, 2=none (chosen at launch).
+uint8 energy_mode
+# Requested Cartesian displacement and measured q at experiment start.
+float64[3] requested_displacement
+float64[7] experiment_initial_q
 float64 dt
 float64 cbf_h
 # a*(effective_torque-coriolis)+b+alpha*h, including bypass/abort commands.
@@ -34,6 +39,13 @@ float64[7] q
 float64[7] dq
 # Controller setCommand torque, before hardware/simulator processing.
 float64[7] tau_command
+# Bias-free nominal QP input and candidate output; candidate is not applied on abort.
+float64[7] u_nom
+float64[7] u_safe
+# Cartesian gains actually used in this control cycle.
+float64 translational_stiffness
+float64 rotational_stiffness
+float64 nullspace_stiffness
 # Raw libfranka RobotMode; see debug_valid.
 uint8 robot_mode
 

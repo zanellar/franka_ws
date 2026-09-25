@@ -31,6 +31,15 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::readParameters(
     ROS_ERROR("runtime_environment must be gazebo or real"); return false;
   }
   real_robot_ = environment == "real";
+  std::string energy_mode;
+  node_handle.param<std::string>("energy_mode", energy_mode, "directional");
+  if (energy_mode == "directional") energy_mode_ = EnergyMode::kDirectional;
+  else if (energy_mode == "total") energy_mode_ = EnergyMode::kTotal;
+  else if (energy_mode == "none") energy_mode_ = EnergyMode::kNone;
+  else {
+    ROS_ERROR("energy_mode must be directional, total, or none");
+    return false;
+  }
   if (real_robot_) {
     if (std::string(DIRECTIONAL_CBF_LIBFRANKA_VERSION)!="0.13.3") {
       ROS_ERROR("Real CBF's actuator prediction is validated against libfranka 0.13.3 source only");
@@ -64,6 +73,10 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::readParameters(
     ROS_ERROR_STREAM(
         "CartesianImpedanceDirectionalKineticEnergyCBFController: Could not read parameter "
         "cbf_active");
+    return false;
+  }
+  if (energy_mode_ == EnergyMode::kNone && cbf_active_) {
+    ROS_ERROR("energy_mode=none requires cbf_active=false");
     return false;
   }
   if (!node_handle.getParam("/damping_ratio", damping_ratio_)) {
@@ -431,6 +444,7 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
     Kmax_=request.Kmax; alpha_=request.alpha; cbf_active_=request.cbf_active;
     if (request.experiment_sequence != hardware_sequence_) {
       hardware_sequence_=request.experiment_sequence;
+      requested_displacement_ = request.displacement;
       position_d_target_=Eigen::Map<const Eigen::Vector3d>(request.position.data());
       orientation_d_target_=Eigen::Quaterniond(request.orientation[0],request.orientation[1],
                                                request.orientation[2],request.orientation[3]);
@@ -468,6 +482,7 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
 
   if (task_state_.consumeStartRequest()) {
     ++experiment_id_;
+    experiment_initial_q_ = q;
     // Restart from the measured pose; keep the new requested target.
     position_d_ = position;
     orientation_d_ = orientation;
@@ -527,6 +542,9 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
 
   // Bias-free nominal control used by the CBF, matching the notes/pseudocode.
   const Vector7d u_nominal = tau_task + tau_nullspace;
+  const double translation_gain_sample = cartesian_stiffness_(0, 0);
+  const double rotation_gain_sample = cartesian_stiffness_(3, 3);
+  const double nullspace_gain_sample = nullspace_stiffness_;
 
   // Franka gravity compensation is handled by the robot. The model Coriolis
   // term is used as the additive bias outside the CBF:
@@ -564,7 +582,7 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   // periodic pose message. Only start_experiment can request another attempt.
   const CbfResult cbf_result = directionalKineticEnergyCbf(
       u_nominal, torque_offset, mass, jacobian, dq, period.toSec(),
-      cbf_active_ && !task_state_.aborted());
+      energy_mode_ != EnergyMode::kNone && cbf_active_ && !task_state_.aborted());
   if (!task_state_.aborted() && cbf_result.solver_status >= 3) {
     task_state_.fail(cbf_result.solver_status);
     if (!real_robot_) ROS_ERROR_STREAM("Directional experiment ABORTED (status "
@@ -581,7 +599,7 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
     // Enforce the same effort box with CBF disabled. With CBF enabled this
     // should only remove numerical roundoff; recheck the actual command.
     tau_command = clampTorqueCommand(tau_command, gravity);
-    if (cbf_active_ && cbf_result.solver_status == 1) {
+    if (energy_mode_ != EnergyMode::kNone && cbf_active_ && cbf_result.solver_status == 1) {
       Vector7d residual_command=tau_command;
       if (real_robot_) {
         hardware_cbf::Seven raw{};
@@ -689,6 +707,11 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
     diagnostic.header.frame_id = base_frame_;
     diagnostic.sample_index = sample_index;
     diagnostic.experiment_id = experiment_id_;
+    diagnostic.energy_mode = static_cast<uint8_t>(energy_mode_);
+    for (int i = 0; i < 3; ++i)
+      diagnostic.requested_displacement[i] = requested_displacement_[i];
+    for (int i = 0; i < 7; ++i)
+      diagnostic.experiment_initial_q[i] = experiment_initial_q_(i);
     diagnostic.dt = period.toSec();
     diagnostic.cbf_h = cbf_result.h;
     diagnostic.kinetic_energy_dir = cbf_result.directional_kinetic_energy;
@@ -721,7 +744,12 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
       diagnostic.q[i] = (real_robot_ || cbf_active_) ? q(i) : unavailable;
       diagnostic.dq[i] = (real_robot_ || cbf_active_) ? dq(i) : unavailable;
       diagnostic.tau_command[i] = (real_robot_ || cbf_active_) ? tau_command(i) : unavailable;
+      diagnostic.u_nom[i] = u_nominal(i);
+      diagnostic.u_safe[i] = cbf_result.u_safe(i);
     }
+    diagnostic.translational_stiffness = translation_gain_sample;
+    diagnostic.rotational_stiffness = rotation_gain_sample;
+    diagnostic.nullspace_stiffness = nullspace_gain_sample;
     diagnostic.robot_mode = (real_robot_ || cbf_active_) ? static_cast<uint8_t>(robot_state.robot_mode) : 0;
     diagnostic.runtime_environment = real_robot_ ? 1 : 0;
     diagnostic.debug_valid = real_robot_ || cbf_active_;
@@ -735,7 +763,7 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
       diagnostic.tau_predicted[i]=predicted_torque_(i);
     }
     diagnostic.control_command_success_rate=robot_state.control_command_success_rate;
-    diagnostic.cbf_active = cbf_active_;
+    diagnostic.cbf_active = energy_mode_ != EnergyMode::kNone && cbf_active_;
     diagnostic.task_aborted = task_state_.aborted();
     diagnostic.cbf_solution_applied = !task_state_.aborted() && cbf_result.solver_status == 1;
     diagnostic.solver_status = cbf_info_.solver_status;
@@ -838,7 +866,8 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
 
   const double lambda_dir_inv =
       (directional_jacobian * mass_inverse * directional_jacobian.transpose())(0, 0);
-  if (!std::isfinite(lambda_dir_inv) || lambda_dir_inv <= mobility_epsilon_) {
+  if (!std::isfinite(lambda_dir_inv) ||
+      (energy_mode_ == EnergyMode::kDirectional && lambda_dir_inv <= mobility_epsilon_)) {
     if (!real_robot_) ROS_ERROR_STREAM_THROTTLE(
         1.0,
         "\n================ CBF ERROR ================\n"
@@ -850,7 +879,10 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
     return result;
   }
 
-  const double lambda_dir = 1.0 / lambda_dir_inv;
+  // In total/none mode a singular projection only makes the directional
+  // diagnostic unavailable; it must not abort a different energy constraint.
+  const bool directional_valid = lambda_dir_inv > mobility_epsilon_;
+  const double lambda_dir = directional_valid ? 1.0 / lambda_dir_inv : 0.0;
 
   // -------------------------------------------------------------------------
   // Analytical derivative of Lambda_dir.
@@ -873,9 +905,15 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
       -lambda_dir * lambda_dir_inv_dot * lambda_dir;
 
   // Directional kinetic energy and barrier function.
-  const double directional_energy =
-      0.5 * lambda_dir * directional_velocity * directional_velocity;
-  const double h = Kmax_ - directional_energy;
+  const double directional_energy = directional_valid
+      ? 0.5 * lambda_dir * directional_velocity * directional_velocity
+      : std::numeric_limits<double>::quiet_NaN();
+  // In compensated coordinates M*qdd=u, so
+  // d/dt (dq^T M dq/2) = dq^T u + dq^T M_dot dq/2.
+  const double total_energy = 0.5 * (dq.transpose() * mass * dq)(0, 0);
+  const double protected_energy = energy_mode_ == EnergyMode::kDirectional
+      ? directional_energy : total_energy;
+  const double h = Kmax_ - protected_energy;
   result.h = h;
   result.directional_kinetic_energy = directional_energy;
 
@@ -887,11 +925,17 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
   //
   // Coriolis is NOT part of a or b. It is added outside the CBF as u_bias.
   // -------------------------------------------------------------------------
-  const RowVector7d a =
+  const RowVector7d directional_a =
       -directional_velocity * lambda_dir * directional_jacobian * mass_inverse;
-  const double b =
+  const double directional_b =
       -directional_velocity * lambda_dir * (directional_jacobian_dot * dq)(0, 0) -
       0.5 * directional_velocity * lambda_dir_dot * directional_velocity;
+  RowVector7d a = directional_a;
+  double b = directional_b;
+  if (energy_mode_ != EnergyMode::kDirectional) {
+    a = -dq.transpose();
+    b = -0.5 * (dq.transpose() * mass_dot * dq)(0, 0);
+  }
 
   result.barrier_a = a;
   result.barrier_b = b;
@@ -906,7 +950,7 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
   // h_dot + alpha*h >= 0  ->  a*u >= -alpha*h - b.
   const double cbf_lower_bound = -alpha_ * h - b;
   if (!a.allFinite() || !std::isfinite(cbf_lower_bound) ||
-      !std::isfinite(h) || !std::isfinite(directional_energy)) {
+      !std::isfinite(h) || !std::isfinite(protected_energy)) {
     if (!real_robot_) ROS_ERROR_THROTTLE(1.0, "Directional CBF: non-finite barrier coefficients");
     result.solver_status = 3;
     return result;
@@ -1025,12 +1069,20 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::startExperimentCal
   Eigen::Quaterniond orientation(o.w, o.x, o.y, o.z);
   const auto& minimum = compliance_paramConfig::__getMin__();
   const auto& maximum = compliance_paramConfig::__getMax__();
+  if (energy_mode_ == EnergyMode::kNone && request.cbf_active) {
+    response.success = false;
+    response.message = "energy_mode=none requires cbf_active=false";
+    return true;
+  }
   if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z) ||
       !orientation.coeffs().allFinite() || !std::isfinite(orientation.norm()) ||
       orientation.norm() < 1.0e-12 || !std::isfinite(request.Kmax) ||
       !std::isfinite(request.alpha) || request.Kmax < minimum.Kmax ||
       request.Kmax > maximum.Kmax || request.alpha < minimum.alpha ||
-      request.alpha > maximum.alpha) {
+      request.alpha > maximum.alpha ||
+      !std::isfinite(request.displacement[0]) ||
+      !std::isfinite(request.displacement[1]) ||
+      !std::isfinite(request.displacement[2])) {
     response.success = false;
     response.message = "Invalid target or CBF parameters outside dynamic-reconfigure limits";
     return true;
@@ -1048,6 +1100,8 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::startExperimentCal
   batching_hardware_request_=false;
   if (real_robot_) {
     hardware_request_.position={{p.x,p.y,p.z}};
+    hardware_request_.displacement={{request.displacement[0], request.displacement[1],
+                                    request.displacement[2]}};
     hardware_request_.orientation={{orientation.w(),orientation.x(),orientation.y(),orientation.z()}};
     ++hardware_request_.experiment_sequence;
     hardware_buffer_.writeFromNonRT(hardware_request_);
@@ -1056,6 +1110,8 @@ bool CartesianImpedanceDirectionalKineticEnergyCBFController::startExperimentCal
     return true;
   }
   position_d_target_ << p.x, p.y, p.z;
+  requested_displacement_ = {{request.displacement[0], request.displacement[1],
+                              request.displacement[2]}};
   orientation_d_target_ = orientation;
   // After the first service command, poses and restarts are accepted together
   // through this service. Stale queued topic messages cannot replace the goal.
@@ -1132,4 +1188,3 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::equilibriumPoseCal
 PLUGINLIB_EXPORT_CLASS(
     franka_example_controllers::CartesianImpedanceDirectionalKineticEnergyCBFController,
     controller_interface::ControllerBase)
-

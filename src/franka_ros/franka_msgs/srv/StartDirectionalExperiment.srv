@@ -3,6 +3,8 @@ geometry_msgs/Pose target
 bool cbf_active
 float64 Kmax
 float64 alpha
+# Relative Cartesian command sent by trajectory_publisher [m].
+float64[3] displacement
 ---
 bool success
 string message

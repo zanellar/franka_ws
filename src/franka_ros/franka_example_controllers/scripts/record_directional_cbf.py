@@ -14,7 +14,7 @@ import time
 import uuid
 
 FIELDS = [
-    'stamp_ns', 'time_s', 'time_segment', 'sample_index', 'experiment_id', 'dt',
+    'stamp_ns', 'time_s', 'time_segment', 'sample_index', 'experiment_id', 'energy_mode', 'dt',
     'cbf_h', 'cbf_constraint_safe', 'cbf_constraint_qp', 'kinetic_energy_dir',
 ] + ['svd_jacobian_{}'.format(i) for i in range(1, 7)] + [
     'Kmax', 'alpha', 'cbf_residual_tolerance', 'direction_x', 'direction_y', 'direction_z',
@@ -23,7 +23,9 @@ FIELDS = [
     'ee_position_x', 'ee_position_y', 'ee_position_z',
     'target_position_x', 'target_position_y', 'target_position_z',
     'ee_target_distance', 'ee_reference_distance',
-]
+    'translational_stiffness', 'rotational_stiffness', 'nullspace_stiffness',
+] + ['{}_{}'.format(name, i) for name in ('u_nom', 'u_safe', 'experiment_initial_q')
+     for i in range(1, 8)] + ['x_move', 'y_move', 'z_move']
 
 
 class CsvRows:
@@ -50,7 +52,7 @@ class CsvRows:
         self.last_missing = missing
         self.previous_ns, self.previous_index = ns, index
         return [ns, (ns - self.origin_ns) * 1e-9, self.segment, index,
-                msg.experiment_id, msg.dt, msg.cbf_h, msg.cbf_constraint_safe,
+                msg.experiment_id, msg.energy_mode, msg.dt, msg.cbf_h, msg.cbf_constraint_safe,
                 msg.cbf_constraint_qp, msg.kinetic_energy_dir] + list(msg.svd_jacobian) + [
                     msg.Kmax, msg.alpha, msg.cbf_residual_tolerance,
                 ] + list(msg.direction) + [
@@ -58,7 +60,10 @@ class CsvRows:
                     msg.solver_status, missing, msg.header.frame_id, msg.kinetic_energy_total,
                 ] + list(msg.ee_position) + list(msg.target_position) + [
                     msg.ee_target_distance, msg.ee_reference_distance,
-                ]
+                    msg.translational_stiffness, msg.rotational_stiffness,
+                    msg.nullspace_stiffness,
+                ] + list(msg.u_nom) + list(msg.u_safe) + \
+                list(msg.experiment_initial_q) + list(msg.requested_displacement)
 
 
 

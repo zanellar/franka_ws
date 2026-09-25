@@ -16,6 +16,7 @@
   <arg name="rosbag" default="false"/>
   <arg name="bag_prefix" default="$(env HOME)/directional_cbf_real"/>
   <arg name="cbf_active" default="false"/>
+  <arg name="energy_mode" default="directional"/>
   <arg name="Kmax" default="1.0"/>
   <arg name="alpha" default="1.0"/>
   <arg name="damping_ratio" default="1.0"/>
@@ -27,6 +28,7 @@
 
   <param name="use_sim_time" value="false"/>
   <param name="cbf_active" value="$(arg cbf_active)" type="bool"/>
+  <param name="energy_mode" value="$(arg energy_mode)"/>
   <param name="Kmax" value="$(arg Kmax)" type="double"/>
   <param name="alpha" value="$(arg alpha)" type="double"/>
   <param name="damping_ratio" value="$(arg damping_ratio)" type="double"/>

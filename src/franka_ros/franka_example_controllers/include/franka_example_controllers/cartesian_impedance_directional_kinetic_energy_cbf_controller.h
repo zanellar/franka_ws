@@ -78,6 +78,7 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
     std::array<double, 4> orientation{{1,0,0,0}};
     double translation{200}, rotation{10}, nullspace{0.5}, Kmax{1}, alpha{1};
     bool cbf_active{false};
+    std::array<double, 3> displacement{};
     uint64_t experiment_sequence{0};
   };
   // Only callbacks write this snapshot. Only update()/starting() touch RT state.
@@ -163,6 +164,8 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
       diagnostics_publisher_;
   uint64_t diagnostic_sample_index_{0};
   uint64_t experiment_id_{0};
+  std::array<double, 3> requested_displacement_{};
+  Vector7d experiment_initial_q_{Vector7d::Zero()};
   std::string base_frame_;
 
   double Kmax_{1.5};
@@ -170,6 +173,9 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   double damping_ratio_{1.0};
   double mobility_epsilon_{1.0e-8};
   bool cbf_active_{true};
+  // Selected at launch; the service may toggle the filter, but not its energy definition.
+  enum class EnergyMode : uint8_t { kDirectional = 0, kTotal = 1, kNone = 2 };
+  EnergyMode energy_mode_{EnergyMode::kDirectional};
   Eigen::Vector3d direction_{Eigen::Vector3d::UnitX()};
 
   // Persistent history used only for numerical derivatives, matching the

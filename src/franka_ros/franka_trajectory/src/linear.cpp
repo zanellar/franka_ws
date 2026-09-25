@@ -198,6 +198,9 @@ class LinearTrajectory {
       command.request.cbf_active = request.cbf_active;
       command.request.Kmax = request.Kmax;
       command.request.alpha = request.alpha;
+      command.request.displacement[0] = request.x_move;
+      command.request.displacement[1] = request.y_move;
+      command.request.displacement[2] = request.z_move;
       if (!directional_experiment_client_.call(command)) {
         response.success = false;
         response.message = "Directional experiment service unavailable; target unchanged";
