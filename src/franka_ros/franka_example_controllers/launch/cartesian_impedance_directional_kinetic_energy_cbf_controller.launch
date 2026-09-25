@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="robot_ip"/>
+  <arg name="controller_name" default="cartesian_impedance_directional_kinetic_energy_cbf_controller"/>
   <arg name="robot" default="fr3"/>
   <arg name="arm_id" default="$(arg robot)"/>
   <arg name="load_gripper" default="false"/>
@@ -45,7 +46,7 @@
     <arg name="state_publish_rate" value="$(arg state_publish_rate)"/>
   </include>
   <rosparam command="load" file="$(find franka_example_controllers)/config/franka_example_controllers.yaml" subst_value="true"/>
-  <group ns="cartesian_impedance_directional_kinetic_energy_cbf_controller">
+  <group ns="$(arg controller_name)">
     <param name="runtime_environment" value="real"/>
     <param name="derivative_filter_alpha" value="$(arg derivative_filter_alpha)" type="double"/>
     <param name="hardware_torque_rate" value="999.0"/>
@@ -53,26 +54,30 @@
     <param name="max_period_seconds" value="0.002"/>
   </group>
   <node name="controller_spawner" pkg="controller_manager" type="spawner" output="screen"
-        args="cartesian_impedance_directional_kinetic_energy_cbf_controller"/>
+        args="$(arg controller_name)"/>
 
   <!-- Existing position JTC is loaded on the first explicit initialization request. -->
   <node name="trajectory_publisher" pkg="franka_trajectory" type="linear" output="screen">
     <param name="runtime_environment" value="real"/>
     <param name="arm_id" value="$(arg arm_id)"/>
     <param name="enable_joint_initialization" value="true"/>
+    <param name="cartesian_controller" value="$(arg controller_name)"/>
+    <param name="cbf_dynamic_reconfigure_service"
+           value="/$(arg controller_name)/dynamic_reconfigure_compliance_param_node/set_parameters"/>
     <param name="joint_trajectory_controller" value="position_joint_trajectory_controller"/>
     <param name="initialization_velocity_scale" value="0.1"/>
     <param name="initialization_velocity_cap" value="0.2"/>
     <param name="initialization_acceleration_cap" value="0.5"/>
     <param name="initialization_jerk_cap" value="1.0"/>
     <param name="directional_experiment_service"
-           value="/cartesian_impedance_directional_kinetic_energy_cbf_controller/start_experiment"/>
+           value="/$(arg controller_name)/start_experiment"/>
     <param name="recording_start_service" value="/directional_cbf_recorder/start" if="$(arg record_cbf)"/>
   </node>
   <node pkg="franka_example_controllers" type="record_directional_cbf.py"
         name="directional_cbf_recorder" output="screen" if="$(arg record_cbf)">
     <param name="runtime_environment" value="real"/>
     <param name="output_dir" value="$(arg log_dir)"/>
+    <param name="controller_name" value="$(arg controller_name)"/>
     <param name="arm_id" value="$(arg arm_id)"/>
   </node>
   <include file="$(find franka_example_controllers)/launch/joint_limit_diagnostics.launch">

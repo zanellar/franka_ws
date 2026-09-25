@@ -45,6 +45,10 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   void starting(const ros::Time& time) override;
   void update(const ros::Time& time, const ros::Duration& period) override;
 
+ protected:
+  // A overrides only the barrier choice; all control and telemetry are shared.
+  virtual bool limitsTotalEnergy() const { return false; }
+
  private:
   using Vector7d = Eigen::Matrix<double, 7, 1>;
   using Vector8d = Eigen::Matrix<double, 8, 1>;
@@ -104,6 +108,7 @@ class CartesianImpedanceDirectionalKineticEnergyCBFController
   CbfResult directionalKineticEnergyCbf(
       const Vector7d& u_nominal,
       const Vector7d& torque_offset,
+      const Vector7d& coriolis,
       const Matrix7d& mass,
       const Matrix6x7d& jacobian,
       const Vector7d& dq,

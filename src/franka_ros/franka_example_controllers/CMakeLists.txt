@@ -200,6 +200,9 @@ catkin_install_python(
 
 
 if(CATKIN_ENABLE_TESTING)
+  add_executable(total_energy_barrier_test test/total_energy_barrier_test.cpp)
+  target_include_directories(total_energy_barrier_test PRIVATE include)
+  add_test(NAME total_energy_barrier_test COMMAND total_energy_barrier_test)
   add_executable(directional_hardware_qp_test test/directional_hardware_qp_test.cpp)
   target_include_directories(directional_hardware_qp_test PRIVATE include)
   add_test(NAME directional_hardware_qp_test COMMAND directional_hardware_qp_test)

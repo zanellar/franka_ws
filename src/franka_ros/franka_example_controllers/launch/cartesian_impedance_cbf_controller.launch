@@ -1,43 +1,31 @@
-<?xml version="1.0" ?>
+<?xml version="1.0"?>
 <launch>
-  <arg name="robot" default="panda" doc="choose your robot. Possible values: [panda, fr3]"/>
+  <!-- Same experiment lifecycle, nominal law and hardware settings as B. -->
+  <arg name="robot_ip" />
+  <arg name="robot" default="fr3" />
   <arg name="arm_id" default="$(arg robot)" />
-  
-	<!-- other setup (user added) -->
-  <arg name="publish_rate" default="100" doc="update rate of reference trajectory"/>
-  <arg name="trajectory" default="circular" doc="trajectory type, current implementations {circular,chirp}"/>
-  <arg name="rosbag" default="true" doc="record messages with rosbag"/>
-  
-    <arg name="alpha" default="1." doc="alpha parameter for cbf controller"/>
-  <arg name="cbf_active" default="true" doc="turn cbf on or off"/>
-  <arg name="Kmax" default="1.5" doc="Maximum allowed kinetic energy of the robot [Joule]"/>
-  <arg name="damping_ratio" default="1." doc="Damping ratio of cartesian impedance controller"/>
-	
-	<param name="alpha" type="double" value="$(arg alpha)"/>
-	<param name="cbf_active" type="bool" value="$(arg cbf_active)"/>
-	<param name="Kmax" type="double" value="$(arg Kmax)"/>
-	<param name="damping_ratio" type="double" value="$(arg damping_ratio)"/>
-	
-		<!-- launch rosbag recorder -->
-	<node pkg="rosbag" type="record" name="rosbag_recorder"
-	args="record -a -o /home/dlogmans/Desktop/Master_Thesis_DDLogmans/Software/Rundata/$(arg trajectory)_$(arg alpha)_$(arg Kmax)_$(arg cbf_active)"
-	if="$(arg rosbag)" />
-  
-  <include file="$(find franka_control)/launch/franka_control.launch" pass_all_args="true"/>
-  <rosparam command="load" file="$(find franka_example_controllers)/config/franka_example_controllers.yaml" subst_value="true" />
-  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="cartesian_impedance_cbf_controller"/>
-  <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find franka_example_controllers)/launch/rviz/franka_description_with_marker.rviz -f $(arg arm_id)_link0 --splash-screen $(find franka_visualization)/splash.png"/>
-<!--  <node name="interactive_marker" pkg="franka_example_controllers" type="interactive_marker.py" required="true" output="screen"> 
-    <param name="link_name" value="$(arg arm_id)_link0" />
-    <remap from="equilibrium_pose" to="/cartesian_impedance_cbf_controller/equilibrium_pose" />
-  </node>-->
-  <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" required="false" />
-  
-  <!-- launch node that publishes reference trajectory -->
-	<node name="trajectory_publisher" pkg="franka_trajectory" type="$(arg trajectory)" output="screen">
-	  <param name="publish_rate" value="$(arg publish_rate)" />
-	</node>
-  
+  <arg name="load_gripper" default="false" />
+  <arg name="xacro_args" default="" />
+  <arg name="control_config" default="$(find franka_control)/config/directional_cbf_real.yaml" />
+  <arg name="state_publish_rate" default="1000" />
+  <arg name="rviz" default="false" />
+  <arg name="rqt_reconfigure" default="false" />
+  <arg name="plot_energies" default="false" />
+  <arg name="plot_joint_limits" default="false" />
+  <arg name="record_cbf" default="true" />
+  <arg name="log_dir" default="$(env HOME)/.ros/directional_cbf_real" />
+  <arg name="rosbag" default="false" />
+  <arg name="bag_prefix" default="$(env HOME)/directional_cbf_real" />
+  <arg name="cbf_active" default="false" />
+  <arg name="Kmax" default="1.0" />
+  <arg name="alpha" default="1.0" />
+  <arg name="damping_ratio" default="1.0" />
+  <arg name="direction_x" default="1.0" />
+  <arg name="direction_y" default="0.0" />
+  <arg name="direction_z" default="0.0" />
+  <arg name="mobility_epsilon" default="1e-8" />
+  <arg name="derivative_filter_alpha" default="0.05" />
+  <include file="$(find franka_example_controllers)/launch/cartesian_impedance_directional_kinetic_energy_cbf_controller.launch" pass_all_args="true">
+    <arg name="controller_name" value="cartesian_impedance_cbf_controller"/>
+  </include>
 </launch>
-
-

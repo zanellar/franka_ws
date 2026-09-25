@@ -52,3 +52,13 @@ float64[7] tau_J
 float64[7] tau_predicted
 float64 control_command_success_rate
 # solver_status: 7=hardware envelope/period invalid, 8=compute budget exceeded.
+
+# Common A/B experiment telemetry. Mode identifies the energy constrained by h.
+uint8 TOTAL_ENERGY=0
+uint8 DIRECTIONAL_ENERGY=1
+uint8 energy_mode
+# Nominal alternative with the SAME final limits and actuator prediction as safe.
+float64 cbf_constraint_nom
+# Both controls exclude Coriolis. u_safe is NaN during abort.
+float64[7] u_nom
+float64[7] u_safe

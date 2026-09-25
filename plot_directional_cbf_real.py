@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Exactly four figures for one CBF-off and one CBF-on experiment.
-Input: diagnostics CSV and /cbf_info CSV exported from the SAME rosbag.
+"""Four figures for a common CBF-off baseline and one or more A/B CBF-on trials.
+Input: diagnostics CSV or direct recorder cbf.csv. Both contain all signals.
+Legacy /cbf_info CSV is optional. --baseline-csv can reuse a separate baseline.
 Dependencies: numpy, matplotlib. No ROS required for plotting.
 Raw u_nom/u_safe exclude Coriolis, before final limiting and actuator filtering.
 cbf_constraint_nom/safe are model residuals for predicted actuator torques.
@@ -26,7 +27,7 @@ def normalize_ros_rows(names, rows):
         if key == 'header.frame_id': return 'frame_id'
         match = re.fullmatch(r'(direction|ee_position|target_position)([0-2])', key)
         if match: return match[1] + '_' + 'xyz'[int(match[2])]
-        match = re.fullmatch(r'(svd_jacobian|q|dq|tau_command|tau_J_d|tau_J|tau_predicted)([0-6])', key)
+        match = re.fullmatch(r'(svd_jacobian|q|dq|tau_command|tau_J_d|tau_J|tau_predicted|u_nom|u_safe)([0-6])', key)
         if match: return match[1] + '_' + str(int(match[2]) + 1)
         return key
     mapping = {k: convert_name(k) for k in names
@@ -82,6 +83,11 @@ def load_csv(path):
             # Ignore unknown nonnumeric extension fields.
     if not np.isfinite(data['time_s']).all():
         raise ValueError('Nonfinite time_s')
+    for group in ('u_nom', 'u_safe'):
+        for j in range(1, 8):
+            key = '{}_{}'.format(group, j)
+            if key in data:
+                data['control_'+key] = data[key].copy()
     return data
 
 def attach_controls(data, path):
@@ -108,7 +114,10 @@ def attach_controls(data, path):
     for group in groups:
         for j in range(7):
             key = 'field.{}{}'.format(group, j)
-            data['control_{}_{}'.format(group, j+1)] = np.array([
+            dest = 'control_{}_{}'.format(group, j+1)
+            if dest in data:
+                continue
+            data[dest] = np.array([
                 float(rows[int(t)][key]) if int(t) in rows else np.nan for t in stamps])
     print('Control CSV: {}/{} exact timestamp matches (no interpolation).'.format(matched.sum(), len(stamps)))
     if not matched.any():
@@ -190,23 +199,31 @@ def detect_motion(data, args):
             'peak_ee_speed': float(np.nanmax(speed)),
             'method': '100 ms local-linear EE velocity; sustained onset 80 ms'}
 
-def choose_trials(data, args):
-    trials = {}
-    selected = [(0, args.off_id), (1, args.on_id)]
+def choose_trials(data, args, baseline=None):
+    trials = []
+    selected = [(0, args.off_id)] + [(1, exp) for exp in args.on_ids]
     for active, exp in selected:
-        mask = data['experiment_id'] == exp
-        if args.segment is not None:
-            mask &= data['time_segment'] == args.segment
+        source = baseline if active == 0 and baseline is not None else data
+        segment = args.baseline_segment if active == 0 and baseline is not None else args.segment
+        mask = source['experiment_id'] == exp
+        if segment is not None:
+            mask &= source['time_segment'] == segment
         if not mask.any():
             raise ValueError('Experiment {} not found'.format(exp))
-        run = {k: v[mask].copy() for k, v in data.items()}
+        run = {k: v[mask].copy() for k, v in source.items()}
         if len(np.unique(run['time_segment'])) != 1:
-            raise ValueError('Experiment ID reused after restart; select --segment')
+            raise ValueError('ID reused after restart; specify --segment/--baseline-segment')
         if not np.all(run['cbf_active'] == active):
             raise ValueError('Experiment {} is not consistently CBF {}'.format(exp, active))
+        modes = np.unique(run.get('energy_mode', np.ones(len(run['time_s']))))
+        if len(modes) != 1 or modes[0] not in (0, 1):
+            raise ValueError('Mixed/unknown energy_mode within experiment')
+        mode = int(modes[0])
+        if active and len(np.unique(col(run, 'alpha'))) != 1:
+            raise ValueError('alpha changed within experiment {}'.format(exp))
         info = detect_motion(run, args) if args.align == 'motion' else None
         if args.align == 'motion' and info is None:
-            raise ValueError('No sustained motion detected for experiment {}; inspect data or use --align command'.format(exp))
+            raise ValueError('No sustained motion for experiment {}; inspect data or use --align command'.format(exp))
         origin = info['onset'] if info else run['time_s'][0]
         run['time_s'] -= origin
         trim = run['time_s'] >= -args.pre_motion
@@ -216,16 +233,17 @@ def choose_trials(data, args):
         if not len(run['time_s']):
             raise ValueError('Empty plotting interval')
         if np.any(col(run, 'task_aborted') == 1):
-            print('WARNING: experiment {} contains abort samples. Raw torque comparison hides these samples.'.format(exp))
-        print('CBF {}: experiment {}, alignment {:.9f} s, {} samples'.format(
-            'on' if active else 'off', exp, origin, len(run['time_s'])))
-        trials[active] = run
+            print('WARNING: experiment {} aborted; raw controls hidden for abort samples.'.format(exp))
+        label = ('CBF {} alpha={:g}'.format('A total' if mode == 0 else 'B directional',
+                 col(run, 'alpha')[0]) if active else 'C: CBF off')
+        print('{}: experiment {}, alignment {:.9f} s, {} samples'.format(label, exp, origin, len(run['time_s'])))
+        trials.append((active, mode, label, run))
     return trials
 
 
 def make_comparison(plt, trials):
     figures = []
-    colors = {0: '#1769aa', 1: '#d64b27'}
+    colors = ['#1769aa', '#d64b27', '#258443', '#8e44ad', '#9c6b18', '#d33784', '#008b8b']
     def new(name, n, size):
         fig, axes = plt.subplots(n, 1, sharex=True, figsize=size, constrained_layout=True)
         axes = np.atleast_1d(axes)
@@ -237,52 +255,55 @@ def make_comparison(plt, trials):
             line(ax, run, values, label, **style)
         else:
             print('Unavailable: {} ({})'.format(key, label))
-            # A legend entry explains missing data without inventing a curve.
             ax.plot([], [], label=label+' [unavailable]', **style)
-    def overlay(ax, key):
-        for active, run in trials.items():
-            draw(ax, run, key, 'CBF '+('on' if active else 'off'), color=colors[active])
-    axes = new('energy_distance', 3, (12, 10))
+    def overlay(ax, key, mode=None):
+        for k, (active, run_mode, label, run) in enumerate(trials):
+            if mode is None or run_mode == mode:
+                draw(ax, run, key, label, color=colors[k % len(colors)])
+    axes = new('energy_distance', 3, (13, 11))
     overlay(axes[0], 'kinetic_energy_dir')
-    for active, run in trials.items():
-        draw(axes[0], run, 'Kmax', 'Kmax '+('on' if active else 'off'),
-             color=colors[active], ls='--')
-    axes[0].set_ylabel('Directional energy [J]')
-    axes[0].set_title('Directional energy and dashed energy bounds')
     overlay(axes[1], 'kinetic_energy_total')
+    # The bound belongs only to the energy selected by each ACTIVE trial.
+    for k, (active, mode, label, run) in enumerate(trials):
+        if active:
+            draw(axes[1 if mode == 0 else 0], run, 'Kmax', 'Kmax '+label,
+                 color=colors[k % len(colors)], ls='--')
+    axes[0].set_ylabel('Directional energy [J]')
     axes[1].set_ylabel('Total energy [J]')
-    axes[1].set_title('Total kinetic energy (Kmax bounds directional energy only)')
+    axes[0].set_title('Dashed bounds: directional for B, total for A')
     overlay(axes[2], 'ee_target_distance')
     axes[2].set_ylabel('Target distance [m]')
-    axes = new('joint_trajectories', 7, (12, 15))
+    axes = new('joint_trajectories', 7, (13, 17))
     for j, ax in enumerate(axes, 1):
         overlay(ax, 'q_{}'.format(j))
         ax.set_ylabel('q{} [rad]'.format(j))
     axes[0].set_title('Joint trajectories')
-    axes = new('cbf_barrier_constraints', 3, (12, 10))
+    axes = new('cbf_barrier_constraints', 3, (13, 11))
     for ax, key, label in zip(axes, ('cbf_h', 'cbf_constraint_nom', 'cbf_constraint_safe'),
                               ('h [J]', 'Nominal residual [J/s]', 'Applied-command residual [J/s]')):
-        overlay(ax, key)
+        # An off baseline has no barrier applied; its diagnostic h uses its originating
+        # controller's mode. Exclude it if that mode differs from the active experiments.
+        for k, (active, mode, trial_label, run) in enumerate(trials):
+            if not active and any(t[1] != mode for t in trials if t[0]):
+                continue
+            draw(ax, run, key, trial_label, color=colors[k % len(colors)])
         ax.axhline(0, color='black', ls='--', lw=1, label='Zero boundary')
         ax.set_ylabel(label)
         ax.set_title(key)
-    axes = new('joint_controls', 7, (12, 15))
-    off, on = trials[0], trials[1]
+    axes = new('joint_controls', 7, (13, 20))
     for j, ax in enumerate(axes, 1):
-        for run, field, label, color, ls in (
-            (off, 'u_nom', 'CBF off: u_nom', '#1769aa', '-'),
-            (on, 'u_safe', 'CBF on: u_safe', '#d64b27', '-'),
-            (on, 'u_nom', 'CBF on: u_nom', '#258443', '--')):
-            key = 'control_{}_{}'.format(field, j)
-            view = dict(run)
-            view[key] = np.where(col(run, 'task_aborted') == 0, col(run, key), np.nan)
-            draw(ax, view, key, label, color=color, ls=ls)
+        for k, (active, mode, label, run) in enumerate(trials):
+            for field, ls in ([('u_nom', '-')] if not active else [('u_safe', '-'), ('u_nom', '--')]):
+                key = 'control_{}_{}'.format(field, j)
+                view = dict(run)
+                view[key] = np.where(col(run, 'task_aborted') == 0, col(run, key), np.nan)
+                draw(ax, view, key, label+': '+field, color=colors[k % len(colors)], ls=ls)
         ax.set_ylabel('Joint {} [Nm]'.format(j))
-    axes[0].set_title('Raw control: Coriolis excluded, before final limits/filtering')
+    axes[0].set_title('Raw control without Coriolis: safe solid, nominal dashed for CBF-on')
     for _, fig, axes in figures:
         for ax in axes:
             ax.grid(True, alpha=.25)
-            ax.legend(loc='best', fontsize=8)
+            ax.legend(loc='best', fontsize=7, ncol=2 if len(trials)>2 else 1)
         axes[-1].set_xlabel('Time from alignment [s]')
     return figures
 
@@ -290,9 +311,11 @@ def make_comparison(plt, trials):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('csv', type=Path, help='/directional_cbf/diagnostics CSV')
-    p.add_argument('--cbf-info', required=True, type=Path, help='/cbf_info CSV')
+    p.add_argument('--cbf-info', type=Path, help='/cbf_info CSV')
     p.add_argument('--off-id', required=True, type=int)
-    p.add_argument('--on-id', required=True, type=int)
+    p.add_argument('--on-id', '--on-ids', dest='on_ids', required=True, type=int, nargs='+')
+    p.add_argument('--baseline-csv', type=Path, help='Optional common C recording from a separate session')
+    p.add_argument('--baseline-segment', type=int)
     p.add_argument('--segment', type=int)
     p.add_argument('--align', choices=('motion', 'command'), default='motion',
                    help='motion: detected EE motion onset; command: first sample of experiment ID')
@@ -305,7 +328,7 @@ def main():
     p.add_argument('--format', choices=('png', 'pdf', 'svg'), default='png')
     p.add_argument('--no-show', action='store_true')
     args = p.parse_args()
-    if args.off_id == args.on_id:
+    if args.baseline_csv is None and args.off_id in args.on_ids:
         raise ValueError('Select two different experiment IDs')
     for name in ('pre_motion', 'motion_speed', 'stop_speed', 'settle_time', 'duration'):
         value = getattr(args, name)
@@ -318,8 +341,10 @@ def main():
         matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     data = load_csv(args.csv)
-    attach_controls(data, args.cbf_info)
-    trials = choose_trials(data, args)
+    if args.cbf_info:
+        attach_controls(data, args.cbf_info)
+    baseline = load_csv(args.baseline_csv) if args.baseline_csv else None
+    trials = choose_trials(data, args, baseline)
     figures = make_comparison(plt, trials)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for name, fig, _ in figures:

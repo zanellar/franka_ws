@@ -1,3 +1,4 @@
+#include <franka_example_controllers/total_energy_barrier.h>
 // Copyright (c) 2017 Franka Emika GmbH
 // Use of this source code is governed by the Apache-2.0 license, see LICENSE
 
@@ -563,7 +564,7 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
   // Continue diagnostics while aborted, but do not solve or resume on a
   // periodic pose message. Only start_experiment can request another attempt.
   const CbfResult cbf_result = directionalKineticEnergyCbf(
-      u_nominal, torque_offset, mass, jacobian, dq, period.toSec(),
+      u_nominal, torque_offset, coriolis, mass, jacobian, dq, period.toSec(),
       cbf_active_ && !task_state_.aborted());
   if (!task_state_.aborted() && cbf_result.solver_status >= 3) {
     task_state_.fail(cbf_result.solver_status);
@@ -691,11 +692,33 @@ void CartesianImpedanceDirectionalKineticEnergyCBFController::update(
     diagnostic.experiment_id = experiment_id_;
     diagnostic.dt = period.toSec();
     diagnostic.cbf_h = cbf_result.h;
+    diagnostic.energy_mode = limitsTotalEnergy() ? 0 : 1;
+    for (size_t i = 0; i < 7; ++i) {
+      diagnostic.u_nom[i] = u_nominal(i);
+      // An aborted/failed QP result must not masquerade as an applied safe input.
+      diagnostic.u_safe[i] = task_state_.aborted()
+          ? std::numeric_limits<double>::quiet_NaN() : cbf_result.u_safe(i);
+    }
     diagnostic.kinetic_energy_dir = cbf_result.directional_kinetic_energy;
     diagnostic.cbf_constraint_safe = std::numeric_limits<double>::quiet_NaN();
     if (cbf_result.barrier_model_valid && tau_command.allFinite() && coriolis.allFinite()) {
       diagnostic.cbf_constraint_safe =
           (cbf_result.barrier_a * (predicted_torque_ - coriolis))(0, 0) +
+          cbf_result.barrier_b + alpha_ * cbf_result.h;
+    }
+    diagnostic.cbf_constraint_nom = std::numeric_limits<double>::quiet_NaN();
+    if (cbf_result.barrier_model_valid && tau_nominal.allFinite() &&
+        coriolis.allFinite() && gravity.allFinite() &&
+        (!real_robot_ || hardware_envelope_.valid)) {
+      Vector7d nominal_effective = clampTorqueCommand(tau_nominal, gravity);
+      if (real_robot_) {
+        hardware_cbf::Seven raw{};
+        std::copy(nominal_effective.data(), nominal_effective.data()+7, raw.begin());
+        const auto predicted = hardware_cbf::predict(hardware_envelope_, raw);
+        nominal_effective = Eigen::Map<const Vector7d>(predicted.data());
+      }
+      diagnostic.cbf_constraint_nom =
+          (cbf_result.barrier_a * (nominal_effective - coriolis))(0, 0) +
           cbf_result.barrier_b + alpha_ * cbf_result.h;
     }
     diagnostic.cbf_constraint_qp = cbf_result.constraint_qp;
@@ -747,6 +770,7 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::CbfResult
 CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnergyCbf(
     const Vector7d& u_nominal,
     const Vector7d& torque_offset,
+    const Vector7d& coriolis,
     const Matrix7d& mass,
     const Matrix6x7d& jacobian,
     const Vector7d& dq,
@@ -757,7 +781,7 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
   // The nominal input is returned only for the intentional CBF bypass.
   result.u_safe = u_nominal;
   if (!mass.allFinite() || !jacobian.allFinite() || !dq.allFinite() ||
-      !u_nominal.allFinite() || !torque_offset.allFinite()) {
+      !u_nominal.allFinite() || !torque_offset.allFinite() || !coriolis.allFinite()) {
     if (!real_robot_) ROS_ERROR_THROTTLE(1.0, "Directional CBF: non-finite model/state/control");
     result.solver_status = 3;
     return result;
@@ -875,7 +899,9 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
   // Directional kinetic energy and barrier function.
   const double directional_energy =
       0.5 * lambda_dir * directional_velocity * directional_velocity;
-  const double h = Kmax_ - directional_energy;
+  const double selected_energy = limitsTotalEnergy()
+      ? 0.5 * (dq.transpose() * mass * dq)(0, 0) : directional_energy;
+  const double h = Kmax_ - selected_energy;
   result.h = h;
   result.directional_kinetic_energy = directional_energy;
 
@@ -885,13 +911,26 @@ CartesianImpedanceDirectionalKineticEnergyCBFController::directionalKineticEnerg
   //   M qdd = u
   //   h_dot = a u + b
   //
-  // Coriolis is NOT part of a or b. It is added outside the CBF as u_bias.
+  // Directional coefficients below use compensated coordinates. The total-energy
+  // variant uses the rigid-body energy identity, including Coriolis power in b.
   // -------------------------------------------------------------------------
-  const RowVector7d a =
+  RowVector7d a =
       -directional_velocity * lambda_dir * directional_jacobian * mass_inverse;
-  const double b =
+  double b =
       -directional_velocity * lambda_dir * (directional_jacobian_dot * dq)(0, 0) -
       0.5 * directional_velocity * lambda_dir_dot * directional_velocity;
+
+  if (limitsTotalEnergy()) {
+    // M*qdd = u in the compensated coordinates. For the rigid-body model,
+    // 0.5*dq^T*Mdot*dq = dq^T*coriolis, hence Edot = dq^T*(u+coriolis).
+    // Use the measured dq also used for energy, without the old A dq limiter.
+    std::array<double, 7> velocity{}, bias{};
+    std::copy(dq.data(), dq.data()+7, velocity.begin());
+    std::copy(coriolis.data(), coriolis.data()+7, bias.begin());
+    const auto total_barrier = totalEnergyBarrier(velocity, bias);
+    a = Eigen::Map<const RowVector7d>(total_barrier.a.data());
+    b = total_barrier.b;
+  }
 
   result.barrier_a = a;
   result.barrier_b = b;

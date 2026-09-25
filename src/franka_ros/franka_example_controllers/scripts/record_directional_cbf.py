@@ -58,9 +58,13 @@ class CsvRows:
                     msg.solver_status, missing, msg.header.frame_id, msg.kinetic_energy_total,
                 ] + list(msg.ee_position) + list(msg.target_position) + [
                     msg.ee_target_distance, msg.ee_reference_distance,
-                ]
+                ] + [msg.energy_mode, msg.cbf_constraint_nom] + list(msg.u_nom) + list(msg.u_safe)
 
 
+
+COMMON_FIELDS = ['energy_mode', 'cbf_constraint_nom'] + [
+    '{}_{}'.format(name, i) for name in ('u_nom', 'u_safe') for i in range(1, 8)]
+FIELDS += COMMON_FIELDS
 
 DEBUG_FIELDS = ['debug_valid', 'robot_mode'] + [
     '{}_{}'.format(name, i) for name in ('q', 'dq', 'tau_command') for i in range(1, 8)
@@ -300,7 +304,7 @@ class ExperimentRecorder:
                         'state_fields': STATE_FIELDS,
                         'franka_control': self.ros.get_param('/franka_control', {}),
                         'controller_parameters': self.ros.get_param(
-                            '/cartesian_impedance_directional_kinetic_energy_cbf_controller', {}),
+                            '/'+self.ros.get_param('~controller_name', 'cartesian_impedance_directional_kinetic_energy_cbf_controller'), {}),
                         'trajectory_parameters': self.ros.get_param('/trajectory_publisher', {}),
                         'note': 'CBF core plus joint debug recorded with CBF on AND off. '
                                 'No contacts.csv on hardware. robot_state.csv continues during joint '

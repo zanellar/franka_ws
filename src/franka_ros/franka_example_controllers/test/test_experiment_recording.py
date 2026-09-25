@@ -33,12 +33,31 @@ def message(index=1, ns=100_001_000_000, active=True):
         header=types.SimpleNamespace(stamp=Stamp(ns), seq=index, frame_id='fr3_link0'),
         clock=Stamp(ns), sample_index=index, experiment_id=1, dt=.001,
         cbf_h=.05, cbf_constraint_safe=.005, cbf_constraint_qp=.005,
+        energy_mode=1, cbf_constraint_nom=-.01, u_nom=[.4]*7, u_safe=[.3]*7,
         kinetic_energy_dir=0., svd_jacobian=[1.] * 6, Kmax=.05, alpha=.1,
         cbf_residual_tolerance=1e-5, direction=[1., 0., 0.], cbf_active=active,
         task_aborted=False, cbf_solution_applied=active, solver_status=1,
         ee_position=[.1, .2, .3], target_position=[.2, .2, .3],
         ee_target_distance=.1, ee_reference_distance=.02,
         kinetic_energy_total=.01, q=[.1]*7, dq=[.2]*7, tau_command=[.3]*7, robot_mode=2)
+
+
+class CommonSchemaTests(unittest.TestCase):
+    def test_ab_same_schema_and_exact_controls(self):
+        for mode in (0, 1):
+            for active in (False, True):
+                msg = message(active=active)
+                msg.energy_mode = mode
+                msg.u_nom = [float(i) for i in range(7)]
+                msg.u_safe = [float(i)/2 for i in range(7)]
+                values = recorder.CsvRows().convert(msg)
+                self.assertEqual(len(values), len(recorder.FIELDS))
+                row = dict(zip(recorder.FIELDS, values))
+                self.assertEqual(row['energy_mode'], mode)
+                self.assertEqual(row['cbf_constraint_nom'], -.01)
+                for i in range(7):
+                    self.assertEqual(row['u_nom_'+str(i+1)], msg.u_nom[i])
+                    self.assertEqual(row['u_safe_'+str(i+1)], msg.u_safe[i])
 
 
 class RecordingTests(unittest.TestCase):
